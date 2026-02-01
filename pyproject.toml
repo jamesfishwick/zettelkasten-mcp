@@ -35,6 +35,9 @@ dev = [
     "mypy>=1.0.0",
 ]
 
+[project.scripts]
+zk = "zettelkasten_mcp.cli:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
