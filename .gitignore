@@ -63,3 +63,6 @@ src/data/
 
 # Claude Code local settings
 .claude/
+
+# Serena MCP configuration
+.serena/
