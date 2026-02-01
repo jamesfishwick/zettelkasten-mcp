@@ -41,6 +41,7 @@ class ClusterReport:
     generated_at: datetime
     clusters: List[ClusterCandidate]
     stats: Dict[str, Any]
+    dismissed_cluster_ids: List[str] = field(default_factory=list)
 
 
 class ClusterService:
@@ -252,7 +253,7 @@ class ClusterService:
     def save_report(self, report: ClusterReport) -> Path:
         """Save cluster report to JSON file."""
         REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Convert to serializable dict
         data = {
             "generated_at": report.generated_at.isoformat(),
@@ -271,9 +272,10 @@ class ClusterService:
                 }
                 for c in report.clusters
             ],
-            "stats": report.stats
+            "stats": report.stats,
+            "dismissed_cluster_ids": report.dismissed_cluster_ids
         }
-        
+
         REPORT_PATH.write_text(json.dumps(data, indent=2))
         return REPORT_PATH
     
@@ -281,7 +283,7 @@ class ClusterService:
         """Load cluster report from JSON file."""
         if not REPORT_PATH.exists():
             return None
-        
+
         try:
             data = json.loads(REPORT_PATH.read_text())
             return ClusterReport(
@@ -301,8 +303,23 @@ class ClusterService:
                     )
                     for c in data["clusters"]
                 ],
-                stats=data["stats"]
+                stats=data["stats"],
+                dismissed_cluster_ids=data.get("dismissed_cluster_ids", [])
             )
         except Exception as e:
             logger.error(f"Failed to load cluster report: {e}")
             return None
+
+    def dismiss_cluster(self, cluster_id: str) -> None:
+        """Add a cluster to the dismissed list.
+
+        Dismissed clusters won't appear in maintenance suggestions.
+
+        Args:
+            cluster_id: The cluster ID to dismiss
+        """
+        report = self.load_report()
+        if report:
+            if cluster_id not in report.dismissed_cluster_ids:
+                report.dismissed_cluster_ids.append(cluster_id)
+            self.save_report(report)

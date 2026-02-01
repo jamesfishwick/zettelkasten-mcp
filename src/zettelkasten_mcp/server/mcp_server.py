@@ -35,7 +35,31 @@ class ZettelkastenMcpServer:
         """Initialize services."""
         self.zettel_service.initialize()
         self.search_service.initialize()
+        self._maybe_refresh_clusters()
         logger.info("Zettelkasten MCP server initialized")
+
+    def _maybe_refresh_clusters(self) -> None:
+        """Refresh cluster analysis if the report is stale (>24h old)."""
+        try:
+            report = self.cluster_service.load_report()
+
+            should_refresh = False
+            if not report:
+                should_refresh = True
+            else:
+                age_hours = (datetime.now() - report.generated_at).total_seconds() / 3600
+                should_refresh = age_hours > 24
+
+            if should_refresh:
+                logger.info("Refreshing stale cluster report...")
+                new_report = self.cluster_service.detect_clusters()
+                # Preserve dismissed clusters from old report
+                if report:
+                    new_report.dismissed_cluster_ids = report.dismissed_cluster_ids
+                self.cluster_service.save_report(new_report)
+                logger.info(f"Cluster report refreshed: {new_report.stats}")
+        except Exception as e:
+            logger.warning(f"Failed to refresh clusters on startup: {e}")
 
     def format_error_response(self, error: Exception) -> str:
         """Format an error response in a consistent way.
@@ -680,6 +704,52 @@ class ZettelkastenMcpServer:
 
     def _register_resources(self) -> None:
 
+        # Maintenance status resource for proactive Claude prompts
+        @self.mcp.resource("zettelkasten://maintenance-status")
+        def get_maintenance_status() -> dict:
+            """Current Zettelkasten maintenance status.
+
+            Returns pending cluster information for proactive maintenance prompts.
+            Check this at session start to surface housekeeping opportunities.
+            """
+            report = self.cluster_service.load_report()
+
+            if not report or not report.clusters:
+                return {
+                    "pending_maintenance": False,
+                    "message": "No pending maintenance. Your Zettelkasten is well-organized!"
+                }
+
+            # Filter out dismissed clusters
+            active_clusters = [
+                c for c in report.clusters
+                if c.id not in report.dismissed_cluster_ids
+            ]
+
+            if not active_clusters:
+                return {
+                    "pending_maintenance": False,
+                    "message": "All detected clusters have been addressed or dismissed."
+                }
+
+            top = active_clusters[0]
+            return {
+                "pending_maintenance": True,
+                "cluster_count": len(active_clusters),
+                "top_cluster": {
+                    "id": top.id,
+                    "title": top.suggested_title,
+                    "note_count": top.note_count,
+                    "orphan_count": top.orphan_count,
+                    "tags": top.tags[:5],
+                    "score": top.score
+                },
+                "report_generated_at": report.generated_at.isoformat(),
+                "report_age_hours": round(
+                    (datetime.now() - report.generated_at).total_seconds() / 3600, 1
+                )
+            }
+
         # Get cluster report
         @self.mcp.tool(name="zk_get_cluster_report")
         def zk_get_cluster_report(
@@ -814,6 +884,9 @@ class ZettelkastenMcpServer:
                         except Exception as link_error:
                             logger.warning(f"Failed to create link to {note_info['id']}: {link_error}")
                 
+                # Mark cluster as addressed
+                self.cluster_service.dismiss_cluster(cluster_id)
+
                 return f"Structure note created: {final_title} (ID: {structure_note.id})\nLinked to {links_created}/{len(cluster.notes)} member notes."
             except Exception as e:
                 return self.format_error_response(e)
@@ -851,12 +924,76 @@ class ZettelkastenMcpServer:
             except Exception as e:
                 return self.format_error_response(e)
 
-        """Register MCP resources."""
-        # Currently, we don't define resources for the Zettelkasten server
-        pass
+        # Dismiss a cluster from maintenance suggestions
+        @self.mcp.tool(name="zk_dismiss_cluster")
+        def zk_dismiss_cluster(cluster_id: str) -> str:
+            """Permanently dismiss a cluster from maintenance suggestions.
+
+            Use this when a cluster has been reviewed and determined not to need
+            a structure note, or when the user doesn't want to be reminded about it.
+
+            Args:
+                cluster_id: The cluster ID to dismiss (e.g. "poetry-craft-revision")
+            """
+            try:
+                report = self.cluster_service.load_report()
+                if not report:
+                    return "No cluster report found. Run zk_refresh_clusters first."
+
+                if cluster_id not in [c.id for c in report.clusters]:
+                    available = ', '.join(c.id for c in report.clusters[:5])
+                    return f"Cluster '{cluster_id}' not found. Available clusters: {available}"
+
+                self.cluster_service.dismiss_cluster(cluster_id)
+                return f"Cluster '{cluster_id}' dismissed. You won't be reminded about it again."
+            except Exception as e:
+                return self.format_error_response(e)
 
     def _register_prompts(self) -> None:
         """Register MCP prompts for knowledge workflows."""
+
+        @self.mcp.prompt()
+        def cluster_maintenance() -> str:
+            """Check for pending cluster maintenance and offer to help.
+
+            Call this at the start of a session to proactively surface
+            Zettelkasten housekeeping opportunities.
+            """
+            report = self.cluster_service.load_report()
+
+            if not report or not report.clusters:
+                return "No pending cluster maintenance. Your Zettelkasten is well-organized!"
+
+            # Filter out dismissed clusters
+            active_clusters = [
+                c for c in report.clusters
+                if c.id not in report.dismissed_cluster_ids
+            ]
+
+            if not active_clusters:
+                return "All detected clusters have been addressed or dismissed."
+
+            # Format top clusters for Claude to present
+            cluster_summaries = []
+            for c in active_clusters[:3]:
+                cluster_summaries.append(
+                    f"- **{c.suggested_title}** ({c.note_count} notes, {c.orphan_count} orphans, score: {c.score})\n"
+                    f"  Tags: {', '.join(c.tags[:4])}\n"
+                    f"  ID: `{c.id}`"
+                )
+
+            return f"""I found {len(active_clusters)} knowledge cluster(s) that might benefit from structure notes.
+
+Top candidates:
+{chr(10).join(cluster_summaries)}
+
+Would you like me to:
+1. **Create a structure note** for one of these clusters? (Just name it)
+2. **Show more details** about a specific cluster?
+3. **Skip for now** - I'll ask again next session
+4. **Dismiss permanently** - Don't ask about these specific clusters again
+
+Just let me know which cluster interests you, or say "skip" to move on."""
 
         @self.mcp.prompt()
         def knowledge_creation(content: str) -> str:
