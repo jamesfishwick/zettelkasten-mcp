@@ -17,6 +17,7 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 from zettelkasten_mcp.services.zettel_service import ZettelService
 from zettelkasten_mcp.services.cluster_service import ClusterService
+from zettelkasten_mcp.services.search_service import SearchService
 from zettelkasten_mcp.storage.note_repository import NoteRepository
 
 
@@ -53,13 +54,15 @@ def cmd_status(args):
 def cmd_search(args):
     """Search notes."""
     zettel = ZettelService()
-    results = zettel.search_notes(query=args.query, limit=args.limit)
+    search = SearchService(zettel)
+    results = search.search_by_text(args.query)
 
     if not results:
         print("No results found.")
         return
 
-    for note in results:
+    for result in results[:args.limit]:
+        note = result.note
         tags = ", ".join(t.name for t in note.tags[:3])
         print(f"{note.id[:12]}  {note.title}")
         if tags:
