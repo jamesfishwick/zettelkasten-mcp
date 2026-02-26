@@ -216,6 +216,35 @@ class NoteRepository(Repository[Note]):
                      if k not in ["id", "title", "type", "tags", "created", "updated"]}
         )
     
+    def _db_note_to_note(self, db_note: DBNote) -> Note:
+        """Convert a DBNote (with eager-loaded relationships) to a domain Note.
+
+        Avoids per-note file I/O by using data already loaded from the database.
+        Requires that db_note.tags, db_note.outgoing_links, and
+        db_note.incoming_links have been eager-loaded in the calling query.
+        """
+        tags = [Tag(name=t.name) for t in db_note.tags]
+        links = [
+            Link(
+                source_id=lnk.source_id,
+                target_id=lnk.target_id,
+                link_type=LinkType(lnk.link_type),
+                description=lnk.description,
+                created_at=lnk.created_at,
+            )
+            for lnk in db_note.outgoing_links
+        ]
+        return Note(
+            id=db_note.id,
+            title=db_note.title,
+            content=db_note.content,
+            note_type=NoteType(db_note.note_type),
+            tags=tags,
+            links=links,
+            created_at=db_note.created_at,
+            updated_at=db_note.updated_at,
+        )
+
     def _index_note(self, note: Note) -> None:
         """Index a note in the database."""
         with self.session_factory() as session:
@@ -397,23 +426,13 @@ class NoteRepository(Repository[Note]):
             # Apply unique() to handle the duplicate rows from eager loading
             db_notes = result.unique().scalars().all()
             
-            # Process notes in batches to reduce memory usage
-            batch_size = 50
+            # Convert DB models to domain notes using already-loaded data
             all_notes = []
-            # Create batches of note IDs
-            note_ids = [note.id for note in db_notes]
-            for i in range(0, len(note_ids), batch_size):
-                batch_ids = note_ids[i:i + batch_size]
-                note_batch = []
-                # Process each note in the batch
-                for note_id in batch_ids:
-                    try:
-                        note = self.get(note_id)
-                        if note:
-                            note_batch.append(note)
-                    except Exception as e:
-                        logger.error(f"Error loading note {note_id}: {e}")
-                all_notes.extend(note_batch)
+            for db_note in db_notes:
+                try:
+                    all_notes.append(self._db_note_to_note(db_note))
+                except Exception as e:
+                    logger.error(f"Error converting note {db_note.id}: {e}")
             return all_notes
     
     def update(self, note: Note) -> Note:
@@ -564,12 +583,12 @@ class NoteRepository(Repository[Note]):
             # Execute query and apply unique() to handle duplicates from joins
             result = session.execute(query)
             db_notes = result.unique().scalars().all()
-        # Load notes from file system
         notes = []
         for db_note in db_notes:
-            note = self.get(db_note.id)
-            if note:
-                notes.append(note)
+            try:
+                notes.append(self._db_note_to_note(db_note))
+            except Exception as e:
+                logger.error(f"Error converting note {db_note.id}: {e}")
         return notes
     
     def find_by_tag(self, tag: Union[str, Tag]) -> List[Note]:
@@ -627,13 +646,12 @@ class NoteRepository(Repository[Note]):
             result = session.execute(query)
             # Apply unique() to handle the duplicate rows from eager loading
             db_notes = result.unique().scalars().all()
-            
-            # Convert to model Notes
             notes = []
             for db_note in db_notes:
-                note = self.get(db_note.id)
-                if note:
-                    notes.append(note)
+                try:
+                    notes.append(self._db_note_to_note(db_note))
+                except Exception as e:
+                    logger.error(f"Error converting note {db_note.id}: {e}")
             return notes
     
     def get_all_tags(self) -> List[Tag]:
