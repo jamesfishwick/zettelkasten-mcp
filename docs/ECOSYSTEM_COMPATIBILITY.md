@@ -5,10 +5,12 @@ Not Obsidian-specific. Uses standard YAML frontmatter + markdown.
 ## Requirements
 
 **Read-only:**
+
 - Markdown viewer
 - File browser
 
 **Full compatibility:**
+
 - YAML frontmatter parser
 - Wikilink recognition `[[note_id]]`
 - File system access
@@ -35,6 +37,7 @@ Content here...
 ```
 
 **Key points:**
+
 - ID-based wikilinks survive renames
 - Semantic link types (extends, supports, contradicts, questions, refines, related)
 - Plain text, no proprietary formats
@@ -56,23 +59,29 @@ Content here...
 ## Setup by Tool
 
 ### Obsidian
+
 Point vault to notes directory. Wikilinks and YAML work natively. Graph view shows connections.
 
 ### VS Code + Foam
+
 Open notes directory as workspace. Install Foam extension for wikilinks and graph view.
 
 ### Logseq
+
 Add notes directory as graph. Daily notes focus with outliner interface.
 
 ### Zettlr
+
 Open notes directory. Citations and export built-in.
 
 ### Plain Editors
+
 Read-only. Open individual files for viewing or printing.
 
 ## Database is Index Only
 
 Markdown files are source of truth. SQLite database provides fast search:
+
 - Rebuilt from files on startup if out of sync
 - Can be deleted and regenerated anytime
 - Not required for reading/editing
@@ -82,6 +91,7 @@ Edit notes in any editor. MCP server detects changes via file watcher or manual 
 ## No Obsidian Dependencies
 
 Uses:
+
 - Standard YAML frontmatter
 - Standard markdown
 - Wikilinks (many tools support)
@@ -89,6 +99,7 @@ Uses:
 - Flat directory structure
 
 Does NOT use:
+
 - Obsidian properties
 - Obsidian plugins
 - Dataview queries
@@ -116,11 +127,13 @@ Flat directory of `.md` files named by IDs.
 ## Recommendations
 
 **Best options:**
+
 1. VS Code + Foam - Free, cross-platform
 2. Logseq - Outliner workflow
 3. Zettlr - Academic writing
 
 **Read-only:**
+
 - Any markdown viewer
 - GitHub (beautiful rendering)
 - Export to PDF from any editor
@@ -128,6 +141,7 @@ Flat directory of `.md` files named by IDs.
 ## Future Enhancements
 
 Possible additions:
+
 1. Standard markdown links `[Title](file.md)` - works everywhere, including GitHub
 2. Static site generator - browse in browser, share publicly
 3. Mobile apps - iOS/Android with sync
@@ -137,6 +151,7 @@ Current system already works with most tools.
 ## Summary
 
 Prerequisites:
+
 1. Folder with `.md` files
 2. YAML frontmatter parser
 3. Wikilink support (for navigation)

@@ -11,6 +11,7 @@ Your notes use timestamp-based IDs. Here's how to create them:
 **Format**: `YYYYMMDDTHHMMSSfffffffff` (where `f` is microseconds)
 
 **Easy methods**:
+
 - Use Obsidian's Templater plugin (recommended)
 - Use a TextExpander/Keyboard Maestro snippet
 - Manually create: `20250621T143022000000000` (just add zeros for microseconds)
@@ -47,30 +48,35 @@ Your note content goes here...
 Choose the appropriate type for your note:
 
 ### **Permanent Notes** (`type: permanent`)
+
 - Well-developed thoughts
 - Your own insights
 - Atomic ideas (one concept per note)
 - Example: "Zero TODOs Policy for Technical Debt Prevention"
 
 ### **Fleeting Notes** (`type: fleeting`)
+
 - Quick captures
 - Temporary thoughts
 - To be processed later
 - Example: "Check out that article on API design"
 
 ### **Literature Notes** (`type: literature`)
+
 - Ideas from books/articles
 - Include source citation
 - In your own words
 - Example: "Luhmann's concept of communicative success"
 
 ### **Structure Notes** (`type: structure`)
+
 - Overview of a topic area
 - Lists related notes
 - Shows connections
 - Example: "API Contract Testing Overview"
 
 ### **Hub Notes** (`type: hub`)
+
 - Major entry points
 - Broad topic areas
 - Links to many notes
@@ -79,6 +85,7 @@ Choose the appropriate type for your note:
 ## 🔗 Creating Links
 
 ### Basic Wiki-Links
+
 ```markdown
 This connects to [[20250612T110722584258000]] for more details.
 ```
@@ -150,7 +157,7 @@ Your system uses semantic relationships. Add these in a `## Links` section:
 1. **Settings → Editor**:
    - ✅ "Always update internal links"
    - ✅ "Show frontmatter"
-   
+
 2. **Settings → Files & Links**:
    - Default location: "In folder: ." (root)
    - New link format: "Shortest path"
@@ -171,8 +178,8 @@ Save this as `_templates/zettelkasten-note.md`:
 created: '{{date:YYYY-MM-DD}}T{{time:HH:mm:ss}}.000000'
 id: {{date:YYYYMMDD}}T{{time:HHmmss}}000000000
 tags:
-- 
-title: 
+-
+title:
 type: permanent
 updated: '{{date:YYYY-MM-DD}}T{{time:HH:mm:ss}}.000000'
 ---
@@ -182,30 +189,36 @@ updated: '{{date:YYYY-MM-DD}}T{{time:HH:mm:ss}}.000000'
 
 
 ## Links
-- 
+-
 ```
 
 ## 🚀 Advanced Tips
 
 ### Finding Orphaned Notes
+
 Use this search to find notes without links:
+
 ```
 -[[
 ```
 
 ### Finding Notes to Process
+
 ```
 tag:fleeting OR tag:to-process
 ```
 
 ### Creating Structure Notes
+
 When you have 5-10 notes on a topic:
+
 1. Create a structure note
 2. List all related notes
 3. Write a brief overview
 4. Identify gaps
 
 ### Regular Maintenance
+
 - Weekly: Process fleeting notes
 - Monthly: Find and connect orphans
 - Quarterly: Create/update structure notes
@@ -213,6 +226,7 @@ When you have 5-10 notes on a topic:
 ## 💡 Remember
 
 The power of Zettelkasten comes from:
+
 1. **Atomic notes** - One idea per note
 2. **Your own words** - Not copy-paste
 3. **Dense linking** - Connect liberally

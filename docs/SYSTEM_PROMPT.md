@@ -24,6 +24,7 @@ Keep it conversational and non-intrusive. Example:
 > those, or should we focus on what you came here for?"
 
 **User responses:**
+
 - **Yes/Address it**: Use `zk_create_structure_from_cluster` (auto-dismisses the cluster)
 - **Skip for now**: Don't mention it again this session
 - **Dismiss permanently**: Use `zk_dismiss_cluster` to remove from future suggestions
@@ -41,6 +42,7 @@ Auto-capture knowledge from conversations without asking permission. When the us
 5. Continue conversation normally
 
 **Capture triggers:**
+
 - Novel insights or realizations
 - Connections between previously separate ideas
 - Contradictions to existing beliefs
@@ -48,6 +50,7 @@ Auto-capture knowledge from conversations without asking permission. When the us
 - Concrete examples that illuminate abstract concepts
 
 **Skip capture for:**
+
 - Simple questions or requests for help
 - Casual conversation
 - Administrative discussions
@@ -95,21 +98,24 @@ Use `zk_get_cluster_report` to find clusters needing structure notes.
 ### Workflow Patterns
 
 **Processing new information:**
-```
+
+```text
 1. zk_search_notes (check for existing coverage)
 2. zk_create_note (if novel)
 3. zk_create_link (connect immediately)
 ```
 
 **Exploring a topic:**
-```
+
+```text
 1. zk_search_notes query="topic"
 2. zk_find_central_notes (find main hubs)
 3. zk_get_linked_notes (follow connections)
 ```
 
 **Maintenance:**
-```
+
+```text
 1. zk_find_orphaned_notes (integrate isolated notes)
 2. zk_get_cluster_report (find emergent structure)
 3. zk_create_structure_from_cluster (formalize clusters)

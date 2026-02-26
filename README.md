@@ -19,10 +19,7 @@ Model Context Protocol server for managing a Zettelkasten knowledge system with 
 git clone https://github.com/yourusername/zettelkasten-mcp.git
 cd zettelkasten-mcp
 
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-pip install -e .
+pipx install --editable .
 ```
 
 ### 2. Configure Environment
@@ -65,8 +62,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "zettelkasten": {
       "command": "/absolute/path/to/zettelkasten-mcp/.venv/bin/python",
-      "args": ["-m", "zettelkasten_mcp"],
+      "args": ["-m", "zettelkasten_mcp.main"],
       "env": {
+        "PYTHONPATH": "/absolute/path/to/zettelkasten-mcp/src",
         "ZETTELKASTEN_NOTES_DIR": "~/.local/share/mcp/zettelkasten/notes",
         "ZETTELKASTEN_DATABASE_PATH": "~/.local/share/mcp/zettelkasten/data/zettelkasten.db"
       }
@@ -75,7 +73,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-Replace `/absolute/path/to/` with your actual path.
+Replace `/absolute/path/to/` with your actual path. The `PYTHONPATH` must point to the `src/` directory so Python can find the package without installing it into the venv.
 
 ### 5. Restart Claude Desktop
 
@@ -84,6 +82,7 @@ Quit and reopen Claude Desktop to load the MCP server.
 ### 6. Verify Installation
 
 In Claude:
+
 - "Create a test note about something"
 - "Search my zettelkasten for test"
 - "Find orphaned notes"
@@ -105,7 +104,7 @@ chmod +x scripts/install-cluster-detection.sh
 
 The installer detects your Python/venv path, generates the LaunchAgent plist, and loads it.
 
-### Manual Test
+### Manual Test (File Watcher)
 
 ```bash
 source .venv/bin/activate
@@ -178,6 +177,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 ## Tools Reference
 
 ### Core Note Operations
+
 | Tool | Description |
 |------|-------------|
 | `zk_create_note` | Create atomic notes (fleeting/literature/permanent/structure/hub) |
@@ -186,6 +186,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 | `zk_delete_note` | Delete notes |
 
 ### Linking
+
 | Tool | Description |
 |------|-------------|
 | `zk_create_link` | Create semantic links between notes |
@@ -193,6 +194,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 | `zk_get_linked_notes` | Get notes linked to/from a note |
 
 ### Search & Discovery
+
 | Tool | Description |
 |------|-------------|
 | `zk_search_notes` | Search by text, tags, or type |
@@ -203,6 +205,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 | `zk_get_all_tags` | List all tags |
 
 ### Cluster Analysis
+
 | Tool | Description |
 |------|-------------|
 | `zk_get_cluster_report` | Get pending clusters needing structure notes |
@@ -211,6 +214,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 | `zk_dismiss_cluster` | Permanently dismiss cluster from suggestions |
 
 ### Maintenance
+
 | Tool | Description |
 |------|-------------|
 | `zk_rebuild_index` | Rebuild database index from files |
@@ -370,7 +374,7 @@ zk export <id>     # Export note markdown to stdout
 zk tags            # List all tags with usage counts
 ```
 
-Install: `pip install -e .` (adds `zk` to your PATH)
+Install: `pipx install --editable .` (adds `zk` to your PATH)
 
 ---
 
