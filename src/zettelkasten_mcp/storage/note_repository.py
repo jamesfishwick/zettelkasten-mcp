@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
 import frontmatter
-from sqlalchemy import and_, create_engine, func, or_, select, text
+from sqlalchemy import and_, create_engine, delete, func, or_, select, text
 from sqlalchemy.orm import Session, joinedload
 
 from zettelkasten_mcp.config import config
@@ -257,8 +257,8 @@ class NoteRepository(Repository[Note]):
                 db_note.note_type = note.note_type.value
                 db_note.updated_at = note.updated_at
                 # Clear existing links and tags to rebuild them
-                session.execute(text(f"DELETE FROM links WHERE source_id = '{note.id}'"))
-                session.execute(text(f"DELETE FROM note_tags WHERE note_id = '{note.id}'"))
+                session.execute(delete(DBLink).where(DBLink.source_id == note.id))
+                db_note.tags.clear()
             else:
                 # Create new note
                 db_note = DBNote(
@@ -485,7 +485,7 @@ class NoteRepository(Repository[Note]):
                         db_note.tags.append(db_tag)
                     
                     # For links, we'll delete existing links and add the new ones
-                    session.execute(text(f"DELETE FROM links WHERE source_id = '{note.id}'"))
+                    session.execute(delete(DBLink).where(DBLink.source_id == note.id))
                     
                     # Add new links
                     for link in note.links:
@@ -523,13 +523,13 @@ class NoteRepository(Repository[Note]):
         except IOError as e:
             raise IOError(f"Failed to delete note {id}: {e}")
         
-        # Delete from database
+        # Delete from database - cascade on DBNote handles outgoing_links and
+        # incoming_links; the note_tags association table rows are removed via FK
         with self.session_factory() as session:
-            # Delete note and its relationships
-            session.execute(text(f"DELETE FROM links WHERE source_id = '{id}' OR target_id = '{id}'"))
-            session.execute(text(f"DELETE FROM note_tags WHERE note_id = '{id}'"))
-            session.execute(text(f"DELETE FROM notes WHERE id = '{id}'"))
-            session.commit()
+            db_note = session.get(DBNote, id)
+            if db_note:
+                session.delete(db_note)
+                session.commit()
     
     def search(self, **kwargs: Any) -> List[Note]:
         """Search for notes based on criteria."""

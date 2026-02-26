@@ -118,24 +118,12 @@ class ClusterService:
         return count
     
     def count_orphans(self, notes: List[Note]) -> int:
-        """Count notes with no links at all."""
-        orphan_count = 0
-        for note in notes:
-            # Get incoming links by checking all notes
-            has_incoming = False
-            for other in notes:
-                if other.id != note.id:
-                    for link in other.links:
-                        if link.target_id == note.id:
-                            has_incoming = True
-                            break
-                if has_incoming:
-                    break
-            
-            if not note.links and not has_incoming:
-                orphan_count += 1
-        
-        return orphan_count
+        """Count notes with no links at all (no outgoing or incoming within the cluster)."""
+        all_target_ids = {link.target_id for note in notes for link in note.links}
+        return sum(
+            1 for note in notes
+            if not note.links and note.id not in all_target_ids
+        )
     
     def score_cluster(self, notes: List[Note]) -> Optional[Dict[str, Any]]:
         """Calculate cluster urgency score."""
@@ -160,7 +148,7 @@ class ClusterService:
         # - density: Lower density = more urgent (needs structure)
         # - freshness: Recent activity = more urgent
         
-        count_score = min(note_count / 7, 1.0) * (1.5 if note_count > 15 else 1.0)
+        count_score = min(note_count / 10, 1.5)
         orphan_ratio = orphan_count / note_count
         urgency_score = orphan_ratio * 2
         freshness = max(0, 1 - (days_old / 90))
