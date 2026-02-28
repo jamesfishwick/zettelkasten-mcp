@@ -12,7 +12,7 @@ _counter = 0
 
 def generate_id() -> str:
     """Generate an ISO 8601 compliant timestamp-based ID with guaranteed uniqueness (pseudo-nanosecond precision).
-    
+
     Returns:
         A string in format "YYYYMMDDTHHMMSSssssssccc" where:
         - YYYYMMDD is the date
@@ -20,29 +20,24 @@ def generate_id() -> str:
         - HHMMSS is the time (hours, minutes, seconds)
         - ssssss is the 6-digit microsecond component (from time.time())
         - ccc is a 3-digit counter for uniqueness within the same microsecond
-        
+
     The format follows ISO 8601 basic format with extended precision,
     allowing up to 1 billion unique IDs per second.
     """
     global _last_timestamp, _counter
 
     with _id_lock:
-        # Get current timestamp with microsecond precision
         now = datetime.datetime.now()
-        # Create a timestamp in microseconds
         current_timestamp = int(now.timestamp() * 1_000_000)
 
-        # If multiple IDs generated in same microsecond, increment counter
         if current_timestamp == _last_timestamp:
             _counter += 1
         else:
             _last_timestamp = current_timestamp
             _counter = 0
 
-        # Ensure counter doesn't overflow our 3 digits
         _counter %= 1000
 
-        # Format as ISO 8601 basic format with microseconds and counter
         date_time = now.strftime('%Y%m%dT%H%M%S')
         microseconds = now.microsecond
 
@@ -73,7 +68,7 @@ class Link(BaseModel):
         default_factory=datetime.datetime.now,
         description="When the link was created"
     )
-    
+
     model_config = {
         "validate_assignment": True,
         "extra": "forbid",
@@ -91,14 +86,13 @@ class NoteType(str, Enum):
 class Tag(BaseModel):
     """A tag for categorizing notes."""
     name: str = Field(..., description="Tag name")
-    
+
     model_config = {
         "validate_assignment": True,
         "frozen": True
     }
-    
+
     def __str__(self) -> str:
-        """Return string representation of tag."""
         return self.name
 
 class Note(BaseModel):
@@ -118,15 +112,15 @@ class Note(BaseModel):
         description="When the note was last updated"
     )
     metadata: Dict[str, Any] = Field(
-        default_factory=dict, 
+        default_factory=dict,
         description="Additional metadata for the note"
     )
-    
+
     model_config = {
         "validate_assignment": True,
         "extra": "forbid"
     }
-    
+
     @field_validator("title")
     @classmethod
     def validate_title(cls, v: str) -> str:
@@ -134,30 +128,28 @@ class Note(BaseModel):
         if not v.strip():
             raise ValueError("Title cannot be empty")
         return v
-    
+
     def add_tag(self, tag: Union[str, Tag]) -> None:
         """Add a tag to the note."""
         if isinstance(tag, str):
             tag = Tag(name=tag)
-        # Check if tag already exists
         tag_names = {t.name for t in self.tags}
         if tag.name not in tag_names:
             self.tags.append(tag)
             self.updated_at = datetime.datetime.now()
-    
+
     def remove_tag(self, tag: Union[str, Tag]) -> None:
         """Remove a tag from the note."""
         tag_name = tag.name if isinstance(tag, Tag) else tag
         self.tags = [t for t in self.tags if t.name != tag_name]
         self.updated_at = datetime.datetime.now()
-    
-    def add_link(self, target_id: str, link_type: LinkType = LinkType.REFERENCE, 
+
+    def add_link(self, target_id: str, link_type: LinkType = LinkType.REFERENCE,
                 description: Optional[str] = None) -> None:
         """Add a link to another note."""
-        # Check if link already exists
         for link in self.links:
             if link.target_id == target_id and link.link_type == link_type:
-                return  # Link already exists
+                return
         link = Link(
             source_id=self.id,
             target_id=target_id,
@@ -166,35 +158,32 @@ class Note(BaseModel):
         )
         self.links.append(link)
         self.updated_at = datetime.datetime.now()
-    
+
     def remove_link(self, target_id: str, link_type: Optional[LinkType] = None) -> None:
         """Remove a link to another note."""
         if link_type:
             self.links = [
-                link for link in self.links 
+                link for link in self.links
                 if not (link.target_id == target_id and link.link_type == link_type)
             ]
         else:
             self.links = [link for link in self.links if link.target_id != target_id]
         self.updated_at = datetime.datetime.now()
-    
+
     def get_linked_note_ids(self) -> Set[str]:
         """Get all note IDs that this note links to."""
         return {link.target_id for link in self.links}
-    
+
     def to_markdown(self) -> str:
         """Convert the note to a markdown formatted string."""
         from zettelkasten_mcp.config import config
-        # Format tags
         tags_str = ", ".join([tag.name for tag in self.tags])
-        # Format links
         links_str = ""
         if self.links:
             links_str = "\n".join([
                 f"- [{link.link_type}] [[{link.target_id}]] {link.description or ''}"
                 for link in self.links
             ])
-        # Apply template
         return config.default_note_template.format(
             title=self.title,
             content=self.content,

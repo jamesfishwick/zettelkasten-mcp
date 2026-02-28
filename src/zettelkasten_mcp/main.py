@@ -43,29 +43,24 @@ def update_config(args):
 
 def main():
     """Run the Zettelkasten MCP server."""
-    # Parse arguments and update config
     args = parse_args()
     update_config(args)
-    
-    # Set up logging
+
     setup_logging(args.log_level)
     logger = logging.getLogger(__name__)
-    
-    # Ensure directories exist
+
     notes_dir = config.get_absolute_path(config.notes_dir)
     notes_dir.mkdir(parents=True, exist_ok=True)
     db_dir = config.get_absolute_path(config.database_path).parent
     db_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Initialize database schema
+
     try:
         logger.info(f"Using SQLite database: {config.get_db_url()}")
         init_db()
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         sys.exit(1)
-    
-    # Create and run the MCP server
+
     try:
         logger.info("Starting Zettelkasten MCP server")
         server = ZettelkastenMcpServer()

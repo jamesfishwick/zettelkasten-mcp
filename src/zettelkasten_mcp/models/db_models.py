@@ -9,10 +9,8 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from zettelkasten_mcp.config import config
 from zettelkasten_mcp.models.schema import LinkType, NoteType
 
-# Create base class for SQLAlchemy models
 Base = declarative_base()
 
-# Association table for tags and notes
 note_tags = Table(
     "note_tags",
     Base.metadata,
@@ -29,26 +27,24 @@ class DBNote(Base):
     note_type = Column(String(50), default=NoteType.PERMANENT.value, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
-    
-    # Relationships
+
     tags = relationship(
         "DBTag", secondary=note_tags, back_populates="notes"
     )
     outgoing_links = relationship(
-        "DBLink", 
+        "DBLink",
         foreign_keys="DBLink.source_id",
         back_populates="source",
         cascade="all, delete-orphan"
     )
     incoming_links = relationship(
-        "DBLink", 
+        "DBLink",
         foreign_keys="DBLink.target_id",
         back_populates="target",
         cascade="all, delete-orphan"
     )
-    
+
     def __repr__(self) -> str:
-        """Return string representation of note."""
         return f"<Note(id='{self.id}', title='{self.title}')>"
 
 class DBTag(Base):
@@ -56,14 +52,12 @@ class DBTag(Base):
     __tablename__ = "tags"
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), unique=True, nullable=False)
-    
-    # Relationships
+
     notes = relationship(
         "DBNote", secondary=note_tags, back_populates="tags"
     )
-    
+
     def __repr__(self) -> str:
-        """Return string representation of tag."""
         return f"<Tag(id={self.id}, name='{self.name}')>"
 
 class DBLink(Base):
@@ -75,23 +69,21 @@ class DBLink(Base):
     link_type = Column(String(50), default=LinkType.REFERENCE.value, nullable=False)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
-    
-    # Relationships
+
     source = relationship(
         "DBNote", foreign_keys=[source_id], back_populates="outgoing_links"
     )
     target = relationship(
         "DBNote", foreign_keys=[target_id], back_populates="incoming_links"
     )
-    
+
     # Add a unique constraint to prevent duplicate links of the same type
     __table_args__ = (
-        UniqueConstraint('source_id', 'target_id', 'link_type', 
+        UniqueConstraint('source_id', 'target_id', 'link_type',
                          name='unique_link_type'),
     )
-    
+
     def __repr__(self) -> str:
-        """Return string representation of link."""
         return (
             f"<Link(id={self.id}, source='{self.source_id}', "
             f"target='{self.target_id}', type='{self.link_type}')>"
@@ -99,7 +91,6 @@ class DBLink(Base):
 
 def init_db() -> None:
     """Initialize the database."""
-    # Create engine based on configuration
     engine = create_engine(config.get_db_url())
     Base.metadata.create_all(engine)
     return engine

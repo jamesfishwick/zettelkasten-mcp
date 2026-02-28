@@ -2,14 +2,12 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
+from sqlalchemy.orm import joinedload
 
+from zettelkasten_mcp.models.db_models import DBLink, DBNote, DBTag
 from zettelkasten_mcp.models.schema import LinkType, Note, NoteType, Tag
 from zettelkasten_mcp.services.zettel_service import ZettelService
-
-from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
-from zettelkasten_mcp.models.db_models import DBLink, DBNote
 
 @dataclass
 class SearchResult:
@@ -21,14 +19,12 @@ class SearchResult:
 
 class SearchService:
     """Service for searching notes in the Zettelkasten."""
-    
+
     def __init__(self, zettel_service: Optional[ZettelService] = None):
-        """Initialize the search service."""
         self.zettel_service = zettel_service or ZettelService()
-    
+
     def initialize(self) -> None:
         """Initialize the service and dependencies."""
-        # Initialize the zettel service if it hasn't been initialized
         self.zettel_service.initialize()
 
     @staticmethod
@@ -86,15 +82,13 @@ class SearchService:
         """Search for notes by text content."""
         if not query:
             return []
-        
-        # Normalize query
+
         query = query.lower()
         query_terms = set(query.split())
-        
-        # Get all notes
+
         all_notes = self.zettel_service.get_all_notes()
         results = []
-        
+
         for note in all_notes:
             score, matched_terms, matched_context = self._score_note(
                 note, query, query_terms, include_title, include_content
@@ -108,35 +102,31 @@ class SearchService:
                         matched_context=matched_context,
                     )
                 )
-        
-        # Sort by score (descending)
+
         results.sort(key=lambda x: x.score, reverse=True)
         return results
-    
+
     def search_by_tag(self, tags: Union[str, List[str]]) -> List[Note]:
         """Search for notes by tags."""
         if isinstance(tags, str):
             return self.zettel_service.get_notes_by_tag(tags)
         else:
-            # If we have multiple tags, find notes with any of the tags
             all_matching_notes = []
             for tag in tags:
                 notes = self.zettel_service.get_notes_by_tag(tag)
                 all_matching_notes.extend(notes)
-            # Remove duplicates by converting to a dictionary by ID
             unique_notes = {note.id: note for note in all_matching_notes}
             return list(unique_notes.values())
-    
+
     def search_by_link(self, note_id: str, direction: str = "both") -> List[Note]:
         """Search for notes linked to/from a note."""
         return self.zettel_service.get_linked_notes(note_id, direction)
-    
+
     def find_orphaned_notes(self) -> List[Note]:
         """Find notes with no incoming or outgoing links."""
         orphans = []
-        
+
         with self.zettel_service.repository.session_factory() as session:
-            # Subquery for notes with links
             notes_with_links = (
                 select(DBNote.id)
                 .outerjoin(DBLink, or_(
@@ -149,8 +139,7 @@ class SearchService:
                 ))
                 .subquery()
             )
-            
-            # Query for notes without links
+
             query = (
                 select(DBNote)
                 .options(
@@ -160,18 +149,18 @@ class SearchService:
                 )
                 .where(DBNote.id.not_in(select(notes_with_links)))
             )
-            
+
             result = session.execute(query)
             orphaned_db_notes = result.unique().scalars().all()
-            
-            # Convert DB notes to model Notes
+
+            # Convert DB notes directly — relationships were eager-loaded above,
+            # so no per-note file I/O is needed.
+            repository = self.zettel_service.repository
             for db_note in orphaned_db_notes:
-                note = self.zettel_service.get_note(db_note.id)
-                if note:
-                    orphans.append(note)
-                    
+                orphans.append(repository._db_note_to_note(db_note))
+
         return orphans
-    
+
     def find_central_notes(self, limit: int = 10) -> List[Tuple[Note, int]]:
         """Find notes with the most connections (incoming + outgoing links)."""
         note_connections = []
@@ -180,13 +169,13 @@ class SearchService:
             # Use a CTE for better readability and performance
             query = text("""
             WITH outgoing AS (
-                SELECT source_id as note_id, COUNT(*) as outgoing_count 
-                FROM links 
+                SELECT source_id as note_id, COUNT(*) as outgoing_count
+                FROM links
                 GROUP BY source_id
             ),
             incoming AS (
-                SELECT target_id as note_id, COUNT(*) as incoming_count 
-                FROM links 
+                SELECT target_id as note_id, COUNT(*) as incoming_count
+                FROM links
                 GROUP BY target_id
             )
             SELECT n.id,
@@ -200,23 +189,19 @@ class SearchService:
             ORDER BY total DESC
             LIMIT :limit
             """)
-            
+
             results = session.execute(query, {"limit": limit}).all()
-            
-            # Process results
+
             for note_id, outgoing_count, incoming_count, total_connections in results:
                 total_connections = outgoing_count + incoming_count
-                if total_connections > 0:  # Only include notes with connections
+                if total_connections > 0:
                     note = self.zettel_service.get_note(note_id)
                     if note:
                         note_connections.append((note, total_connections))
-        
-        # Sort by total connections (descending)
+
         note_connections.sort(key=lambda x: x[1], reverse=True)
-        
-        # Return top N notes
         return note_connections[:limit]
-    
+
     def find_notes_by_date_range(
         self,
         start_date: Optional[datetime] = None,
@@ -224,33 +209,29 @@ class SearchService:
         use_updated: bool = False
     ) -> List[Note]:
         """Find notes created or updated within a date range."""
-        all_notes = self.zettel_service.get_all_notes()
-        matching_notes = []
-        
-        for note in all_notes:
-            # Get the relevant date
-            date = note.updated_at if use_updated else note.created_at
-            
-            # Check if in range
-            if start_date and date < start_date:
-                continue
-            if end_date and date >= end_date + datetime.timedelta(seconds=1):
-                continue
-            
-            matching_notes.append(note)
-        
-        # Sort by date (descending)
-        matching_notes.sort(
-            key=lambda x: x.updated_at if use_updated else x.created_at,
-            reverse=True
-        )
-        
-        return matching_notes
-    
+        date_col = DBNote.updated_at if use_updated else DBNote.created_at
+        repository = self.zettel_service.repository
+
+        with repository.session_factory() as session:
+            query = select(DBNote).options(
+                joinedload(DBNote.tags),
+                joinedload(DBNote.outgoing_links),
+                joinedload(DBNote.incoming_links)
+            )
+            if start_date:
+                query = query.where(date_col >= start_date)
+            if end_date:
+                query = query.where(date_col <= end_date)
+            query = query.order_by(date_col.desc())
+
+            result = session.execute(query)
+            db_notes = result.unique().scalars().all()
+            return [repository._db_note_to_note(db_note) for db_note in db_notes]
+
     def find_similar_notes(self, note_id: str) -> List[Tuple[Note, float]]:
         """Find notes similar to the given note based on shared tags and links."""
         return self.zettel_service.find_similar_notes(note_id)
-    
+
     def search_combined(
         self,
         text: Optional[str] = None,
@@ -260,37 +241,33 @@ class SearchService:
         end_date: Optional[datetime] = None,
     ) -> List[SearchResult]:
         """Perform a combined search with multiple criteria."""
-        # Start with all notes
-        all_notes = self.zettel_service.get_all_notes()
-        
-        # Filter by criteria
-        filtered_notes = []
-        for note in all_notes:
-            # Check note type
-            if note_type and note.note_type != note_type:
-                continue
-            
-            # Check date range
-            if start_date and note.created_at < start_date:
-                continue
-            if end_date and note.created_at > end_date:
-                continue
-            
-            # Check tags
+        repository = self.zettel_service.repository
+
+        with repository.session_factory() as session:
+            query = select(DBNote).options(
+                joinedload(DBNote.tags),
+                joinedload(DBNote.outgoing_links),
+                joinedload(DBNote.incoming_links),
+            )
+            if note_type:
+                query = query.where(DBNote.note_type == note_type.value)
+            if start_date:
+                query = query.where(DBNote.created_at >= start_date)
+            if end_date:
+                query = query.where(DBNote.created_at <= end_date)
             if tags:
-                note_tag_names = {tag.name for tag in note.tags}
-                if not any(tag in note_tag_names for tag in tags):
-                    continue
-            
-            # Made it through all filters
-            filtered_notes.append(note)
-        
-        # If we have a text query, score the notes
+                query = query.where(
+                    DBNote.tags.any(DBTag.name.in_(tags))
+                )
+
+            db_notes = session.execute(query).unique().scalars().all()
+            filtered_notes = [repository._db_note_to_note(n) for n in db_notes]
+
         results = []
         if text:
             text = text.lower()
             query_terms = set(text.split())
-            
+
             for note in filtered_notes:
                 score, matched_terms, matched_context = self._score_note(
                     note, text, query_terms
@@ -305,12 +282,10 @@ class SearchService:
                         )
                     )
         else:
-            # If no text query, just add all filtered notes with a default score
             results = [
                 SearchResult(note=note, score=1.0, matched_terms=set(), matched_context="")
                 for note in filtered_notes
             ]
-        
-        # Sort by score (descending)
+
         results.sort(key=lambda x: x.score, reverse=True)
         return results
