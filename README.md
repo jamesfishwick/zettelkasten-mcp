@@ -2,11 +2,16 @@
 
 Model Context Protocol server for managing a Zettelkasten knowledge system with automatic cluster detection.
 
+## Requirements
+
+- Python 3.11+
+- macOS or Linux
+
 ## Features
 
 - **Atomic Notes**: Create, update, and link notes following Zettelkasten principles
 - **Semantic Links**: Seven link types (reference, extends, refines, contradicts, questions, supports, related)
-- **Full-Text Search**: Search across titles, content, and tags
+- **Full-Text Search**: BM25-ranked search across titles and content using SQLite FTS5
 - **Graph Analysis**: Find central notes, orphans, and similar notes
 - **Cluster Detection**: Identifies emergent knowledge clusters
 - **Structure Note Generation**: Create structure notes from detected clusters
@@ -55,7 +60,9 @@ The server creates these automatically, but explicit creation helps verify permi
 
 ### 4. Configure Claude Desktop
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+**macOS** — `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+**Linux** — `~/.config/claude/claude_desktop_config.json`
 
 ```json
 {
@@ -66,14 +73,17 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
       "env": {
         "PYTHONPATH": "/absolute/path/to/zettelkasten-mcp/src",
         "ZETTELKASTEN_NOTES_DIR": "~/.local/share/mcp/zettelkasten/notes",
-        "ZETTELKASTEN_DATABASE_PATH": "~/.local/share/mcp/zettelkasten/data/zettelkasten.db"
+        "ZETTELKASTEN_DATABASE_PATH": "~/.local/share/mcp/zettelkasten/data/zettelkasten.db",
+        "ZETTELKASTEN_LOG_LEVEL": "INFO"
       }
     }
   }
 }
 ```
 
-Replace `/absolute/path/to/` with your actual path. The `PYTHONPATH` must point to the `src/` directory so Python can find the package without installing it into the venv.
+Replace `/absolute/path/to/` with your actual path. The `PYTHONPATH` must point to the `src/` directory so Python can find the package. Environment variables set in `.env` are not read by Claude Desktop — configure them here instead.
+
+> **Note:** This config assumes you cloned the repo and are using the local venv (`.venv/bin/python`). If you installed via `pipx install --editable .`, use the path that `which python` reports inside the pipx environment instead.
 
 ### 5. Restart Claude Desktop
 
@@ -197,7 +207,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 
 | Tool | Description |
 |------|-------------|
-| `zk_search_notes` | Search by text, tags, or type |
+| `zk_search_notes` | Search by text (BM25-ranked), tags, or type |
 | `zk_find_similar_notes` | Find notes similar to a given note |
 | `zk_find_central_notes` | Find most connected notes |
 | `zk_find_orphaned_notes` | Find unconnected notes |
@@ -298,6 +308,20 @@ Content here...
 ```
 
 You can edit these files directly in any text editor or Obsidian. Run `zk_rebuild_index` after external edits.
+
+---
+
+## Upgrading
+
+After pulling new versions, restart Claude Desktop. If the release notes mention database changes, run `zk_rebuild_index` once to bring your existing database up to date.
+
+**Upgrading to FTS5 search (any version after the FTS5 release):** The full-text search index is created automatically when the server starts against a new database. For existing databases, the FTS5 table will be created on first startup but will be empty until you run:
+
+```
+zk_rebuild_index
+```
+
+This populates the BM25 index from your existing notes. Search results will not be relevance-ranked until this is done.
 
 ---
 
