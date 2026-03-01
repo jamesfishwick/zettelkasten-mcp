@@ -278,6 +278,8 @@ class NoteRepository(Repository[Note]):
             "created": note.created_at.isoformat(),
             "updated": note.updated_at.isoformat()
         }
+        if note.references:
+            metadata["references"] = note.references
         metadata.update(note.metadata)
 
         # Avoid duplicate title heading.

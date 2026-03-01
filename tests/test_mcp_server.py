@@ -246,3 +246,21 @@ def test_note_references_roundtrip():
     )
     assert len(note.references) == 2
     assert "Ahrens" in note.references[0]
+
+
+def test_note_to_markdown_includes_references(tmp_path):
+    import frontmatter as fm
+    from zettelkasten_mcp.models.schema import Note
+    from zettelkasten_mcp.storage.note_repository import NoteRepository
+    repo = NoteRepository(notes_dir=tmp_path)
+    note = Note(
+        title="Cited Note",
+        content="This idea came from a book.",
+        references=["Ahrens, S. (2017). How to Take Smart Notes.", "https://zettelkasten.de"]
+    )
+    created = repo.create(note)
+    file_path = tmp_path / f"{created.id}.md"
+    post = fm.load(str(file_path))
+    assert "references" in post.metadata
+    assert len(post.metadata["references"]) == 2
+    assert "Ahrens" in post.metadata["references"][0]
