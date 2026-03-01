@@ -2,8 +2,8 @@
 import datetime
 from typing import List, Optional
 
-from sqlalchemy import (Column, DateTime, ForeignKey, Integer, String, Table,
-                       Text, UniqueConstraint, create_engine)
+from sqlalchemy import (Column, DateTime, Engine, ForeignKey, Integer, String,
+                       Table, Text, UniqueConstraint, create_engine, text)
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 from zettelkasten_mcp.config import config
@@ -89,10 +89,39 @@ class DBLink(Base):
             f"target='{self.target_id}', type='{self.link_type}')>"
         )
 
-def init_db() -> None:
-    """Initialize the database."""
+def init_db() -> "Engine":
+    """Initialize the database, including FTS5 virtual table and sync triggers."""
     engine = create_engine(config.get_db_url())
     Base.metadata.create_all(engine)
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts
+            USING fts5(title, content, content='notes', content_rowid='rowid')
+        """))
+
+        conn.execute(text("""
+            CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN
+                INSERT INTO notes_fts(rowid, title, content)
+                VALUES (new.rowid, new.title, new.content);
+            END
+        """))
+        conn.execute(text("""
+            CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN
+                INSERT INTO notes_fts(notes_fts, rowid, title, content)
+                VALUES ('delete', old.rowid, old.title, old.content);
+            END
+        """))
+        conn.execute(text("""
+            CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN
+                INSERT INTO notes_fts(notes_fts, rowid, title, content)
+                VALUES ('delete', old.rowid, old.title, old.content);
+                INSERT INTO notes_fts(rowid, title, content)
+                VALUES (new.rowid, new.title, new.content);
+            END
+        """))
+        conn.commit()
+
     return engine
 
 def get_session_factory(engine=None):
