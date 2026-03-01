@@ -103,6 +103,10 @@ class Note(BaseModel):
     note_type: NoteType = Field(default=NoteType.PERMANENT, description="Type of note")
     tags: List[Tag] = Field(default_factory=list, description="Tags for categorization")
     links: List[Link] = Field(default_factory=list, description="Links to other notes")
+    references: List[str] = Field(
+        default_factory=list,
+        description="Bibliographic citations to external sources (books, articles, URLs)"
+    )
     created_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
         description="When the note was created"

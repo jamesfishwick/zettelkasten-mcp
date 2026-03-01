@@ -27,6 +27,7 @@ class ZettelService:
         content: str,
         note_type: NoteType = NoteType.PERMANENT,
         tags: Optional[List[str]] = None,
+        references: Optional[List[str]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Note:
         """Create a new note."""
@@ -40,6 +41,7 @@ class ZettelService:
             content=content,
             note_type=note_type,
             tags=[Tag(name=tag) for tag in (tags or [])],
+            references=references or [],
             metadata=metadata or {}
         )
 
@@ -60,6 +62,7 @@ class ZettelService:
         content: Optional[str] = None,
         note_type: Optional[NoteType] = None,
         tags: Optional[List[str]] = None,
+        references: Optional[List[str]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Note:
         """Update an existing note."""
@@ -75,6 +78,8 @@ class ZettelService:
             note.note_type = note_type
         if tags is not None:
             note.tags = [Tag(name=tag) for tag in tags]
+        if references is not None:
+            note.references = references
         if metadata is not None:
             note.metadata = metadata
 

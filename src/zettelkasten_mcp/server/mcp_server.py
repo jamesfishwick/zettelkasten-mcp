@@ -75,10 +75,11 @@ class ZettelkastenMcpServer:
         """Register MCP tools."""
         @self.mcp.tool(name="zk_create_note")
         def zk_create_note(
-            title: str, 
-            content: str, 
+            title: str,
+            content: str,
             note_type: str = "permanent",
-            tags: Optional[str] = None
+            tags: Optional[str] = None,
+            references: Optional[str] = None
         ) -> str:
             """Create a new atomic Zettelkasten note.
 
@@ -87,7 +88,7 @@ class ZettelkastenMcpServer:
 
             Note Types:
             - fleeting: Quick captures, unprocessed thoughts (process within 24-48 hours)
-            - literature: Ideas extracted from sources (always include citation in content)
+            - literature: Ideas extracted from sources (always include citation in references)
             - permanent: Refined ideas in your own words (the core of your Zettelkasten)
             - structure: Maps organizing 7-15 related notes on a topic
             - hub: Entry points into major knowledge domains
@@ -103,6 +104,7 @@ class ZettelkastenMcpServer:
                 content: Full note content in markdown
                 note_type: One of fleeting/literature/permanent/structure/hub (default: permanent)
                 tags: Comma-separated tags, e.g. "poetry,revision,craft"
+                references: Newline-separated citations to external sources (e.g. "Ahrens, S. (2017). How to Take Smart Notes.\nhttps://zettelkasten.de")
             """
             try:
                 try:
@@ -114,11 +116,14 @@ class ZettelkastenMcpServer:
                 if tags:
                     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
 
+                ref_list = [r.strip() for r in references.split("\n") if r.strip()] if references else []
+
                 note = self.zettel_service.create_note(
                     title=title,
                     content=content,
                     note_type=note_type_enum,
                     tags=tag_list,
+                    references=ref_list,
                 )
                 return f"Note created successfully with ID: {note.id}"
             except Exception as e:
@@ -149,6 +154,10 @@ class ZettelkastenMcpServer:
                 result += f"Updated: {note.updated_at.isoformat()}\n"
                 if note.tags:
                     result += f"Tags: {', '.join(tag.name for tag in note.tags)}\n"
+                if note.references:
+                    result += "References:\n"
+                    for ref in note.references:
+                        result += f"  - {ref}\n"
                 result += f"\n{note.content}\n"
                 return result
             except Exception as e:
@@ -160,12 +169,14 @@ class ZettelkastenMcpServer:
             title: Optional[str] = None,
             content: Optional[str] = None,
             note_type: Optional[str] = None,
-            tags: Optional[str] = None
+            tags: Optional[str] = None,
+            references: Optional[str] = None
         ) -> str:
             """Update an existing note.
 
             Only provided fields are updated; omitted fields remain unchanged.
             Pass empty string for tags to clear all tags.
+            Pass empty string for references to clear all references.
 
             Args:
                 note_id: The ID of the note to update
@@ -173,6 +184,7 @@ class ZettelkastenMcpServer:
                 content: New content (optional)
                 note_type: New type: fleeting/literature/permanent/structure/hub (optional)
                 tags: New comma-separated tags, or empty string to clear (optional)
+                references: New newline-separated citations, or empty string to clear (optional)
             """
             try:
                 note = self.zettel_service.get_note(str(note_id))
@@ -190,12 +202,17 @@ class ZettelkastenMcpServer:
                 if tags is not None:  # Allow empty string to clear tags
                     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
 
+                ref_list = None
+                if references is not None:  # Allow empty string to clear references
+                    ref_list = [r.strip() for r in references.split("\n") if r.strip()]
+
                 updated_note = self.zettel_service.update_note(
                     note_id=note_id,
                     title=title,
                     content=content,
                     note_type=note_type_enum,
-                    tags=tag_list
+                    tags=tag_list,
+                    references=ref_list
                 )
                 return f"Note updated successfully: {updated_note.id}"
             except Exception as e:
