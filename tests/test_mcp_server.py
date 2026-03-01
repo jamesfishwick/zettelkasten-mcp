@@ -264,3 +264,17 @@ def test_note_to_markdown_includes_references(tmp_path):
     assert "references" in post.metadata
     assert len(post.metadata["references"]) == 2
     assert "Ahrens" in post.metadata["references"][0]
+
+
+def test_references_roundtrip_via_file(tmp_path):
+    from zettelkasten_mcp.models.schema import Note
+    from zettelkasten_mcp.storage.note_repository import NoteRepository
+    repo = NoteRepository(notes_dir=tmp_path)
+    note = Note(
+        title="Roundtrip Note",
+        content="Body text.",
+        references=["Luhmann, N. (1992). Communicating with Slip Boxes."]
+    )
+    created = repo.create(note)
+    retrieved = repo.get(created.id)
+    assert retrieved.references == ["Luhmann, N. (1992). Communicating with Slip Boxes."]

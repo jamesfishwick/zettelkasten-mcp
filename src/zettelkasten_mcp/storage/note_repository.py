@@ -170,6 +170,14 @@ class NoteRepository(Repository[Note]):
             else created_at
         )
 
+        refs_raw = metadata.get("references", [])
+        if isinstance(refs_raw, list):
+            references = [str(r) for r in refs_raw if str(r).strip()]
+        elif isinstance(refs_raw, str):
+            references = [r.strip() for r in refs_raw.split("\n") if r.strip()]
+        else:
+            references = []
+
         return Note(
             id=note_id,
             title=title,
@@ -177,10 +185,11 @@ class NoteRepository(Repository[Note]):
             note_type=note_type,
             tags=tags,
             links=links,
+            references=references,
             created_at=created_at,
             updated_at=updated_at,
             metadata={k: v for k, v in metadata.items()
-                     if k not in ["id", "title", "type", "tags", "created", "updated"]}
+                     if k not in ["id", "title", "type", "tags", "created", "updated", "references"]}
         )
 
     def _db_note_to_note(self, db_note: DBNote) -> Note:
