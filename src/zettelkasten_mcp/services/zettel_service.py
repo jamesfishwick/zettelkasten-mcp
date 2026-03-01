@@ -1,8 +1,7 @@
 """Service layer for Zettelkasten operations."""
 import datetime
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from zettelkasten_mcp.config import config
 from zettelkasten_mcp.models.schema import Link, LinkType, Note, NoteType, Tag

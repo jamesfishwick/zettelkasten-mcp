@@ -1,5 +1,6 @@
 """Repository for note storage and retrieval."""
 import datetime
+import json
 import logging
 import os
 import threading
@@ -222,9 +223,19 @@ class NoteRepository(Repository[Note]):
             note_type=NoteType(db_note.note_type),
             tags=tags,
             links=links,
+            references=db_note.references,
             created_at=db_note.created_at,
             updated_at=db_note.updated_at,
         )
+
+    def _get_or_create_tag(self, session: Session, tag_name: str) -> DBTag:
+        """Return the DBTag with the given name, creating it if absent."""
+        db_tag = session.scalar(select(DBTag).where(DBTag.name == tag_name))
+        if not db_tag:
+            db_tag = DBTag(name=tag_name)
+            session.add(db_tag)
+            session.flush()
+        return db_tag
 
     def _index_note(self, note: Note) -> None:
         """Index a note in the database."""
@@ -234,6 +245,7 @@ class NoteRepository(Repository[Note]):
                 db_note.title = note.title
                 db_note.content = note.content
                 db_note.note_type = note.note_type.value
+                db_note.references = note.references
                 db_note.updated_at = note.updated_at
                 # Clear existing links and tags to rebuild them
                 session.execute(delete(DBLink).where(DBLink.source_id == note.id))
@@ -244,6 +256,7 @@ class NoteRepository(Repository[Note]):
                     title=note.title,
                     content=note.content,
                     note_type=note.note_type.value,
+                    references_json=json.dumps(note.references),
                     created_at=note.created_at,
                     updated_at=note.updated_at
                 )
@@ -252,14 +265,7 @@ class NoteRepository(Repository[Note]):
             session.flush()  # Flush to get the note ID
 
             for tag in note.tags:
-                db_tag = session.scalar(
-                    select(DBTag).where(DBTag.name == tag.name)
-                )
-                if not db_tag:
-                    db_tag = DBTag(name=tag.name)
-                    session.add(db_tag)
-                    session.flush()
-                db_note.tags.append(db_tag)
+                db_note.tags.append(self._get_or_create_tag(session, tag.name))
 
             for link in note.links:
                 existing_link = session.scalar(
@@ -419,19 +425,12 @@ class NoteRepository(Repository[Note]):
                     db_note.title = note.title
                     db_note.content = note.content
                     db_note.note_type = note.note_type.value
+                    db_note.references = note.references
                     db_note.updated_at = note.updated_at
 
                     db_note.tags = []
-
                     for tag in note.tags:
-                        db_tag = session.scalar(
-                            select(DBTag).where(DBTag.name == tag.name)
-                        )
-                        if not db_tag:
-                            db_tag = DBTag(name=tag.name)
-                            session.add(db_tag)
-                            session.flush()
-                        db_note.tags.append(db_tag)
+                        db_note.tags.append(self._get_or_create_tag(session, tag.name))
 
                     # Delete-and-replace links rather than merging to avoid stale entries.
                     session.execute(delete(DBLink).where(DBLink.source_id == note.id))

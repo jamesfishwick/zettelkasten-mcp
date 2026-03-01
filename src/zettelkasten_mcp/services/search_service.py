@@ -1,8 +1,8 @@
 """Service for searching and discovering notes in the Zettelkasten."""
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from sqlalchemy import func, or_, select, text
+from typing import List, Optional, Set, Tuple, Union
+from sqlalchemy import or_, select, text
 from sqlalchemy.orm import joinedload
 
 from zettelkasten_mcp.models.db_models import DBLink, DBNote, DBTag
@@ -77,13 +77,7 @@ class SearchService:
         """Search for notes by tags."""
         if isinstance(tags, str):
             return self.zettel_service.get_notes_by_tag(tags)
-        else:
-            all_matching_notes = []
-            for tag in tags:
-                notes = self.zettel_service.get_notes_by_tag(tag)
-                all_matching_notes.extend(notes)
-            unique_notes = {note.id: note for note in all_matching_notes}
-            return list(unique_notes.values())
+        return self.zettel_service.repository.search(tags=tags)
 
     def search_by_link(self, note_id: str, direction: str = "both") -> List[Note]:
         """Search for notes linked to/from a note."""
@@ -130,11 +124,10 @@ class SearchService:
 
     def find_central_notes(self, limit: int = 10) -> List[Tuple[Note, int]]:
         """Find notes with the most connections (incoming + outgoing links)."""
-        note_connections = []
-        # Direct database query to count connections for all notes at once
-        with self.zettel_service.repository.session_factory() as session:
-            # Use a CTE for better readability and performance
-            query = text("""
+        repository = self.zettel_service.repository
+
+        with repository.session_factory() as session:
+            cte_sql = text("""
             WITH outgoing AS (
                 SELECT source_id as note_id, COUNT(*) as outgoing_count
                 FROM links
@@ -146,8 +139,6 @@ class SearchService:
                 GROUP BY target_id
             )
             SELECT n.id,
-                COALESCE(o.outgoing_count, 0) as outgoing,
-                COALESCE(i.incoming_count, 0) as incoming,
                 (COALESCE(o.outgoing_count, 0) + COALESCE(i.incoming_count, 0)) as total
             FROM notes n
             LEFT JOIN outgoing o ON n.id = o.note_id
@@ -157,17 +148,34 @@ class SearchService:
             LIMIT :limit
             """)
 
-            results = session.execute(query, {"limit": limit}).all()
+            ranked_rows = session.execute(cte_sql, {"limit": limit}).all()
+            if not ranked_rows:
+                return []
 
-            for note_id, outgoing_count, incoming_count, total_connections in results:
-                total_connections = outgoing_count + incoming_count
-                if total_connections > 0:
-                    note = self.zettel_service.get_note(note_id)
-                    if note:
-                        note_connections.append((note, total_connections))
+            # Map note_id -> total for O(1) lookup after batch-load.
+            rank_map = {row.id: row.total for row in ranked_rows}
+            ordered_ids = [row.id for row in ranked_rows]
 
-        note_connections.sort(key=lambda x: x[1], reverse=True)
-        return note_connections[:limit]
+            db_notes_query = (
+                select(DBNote)
+                .where(DBNote.id.in_(ordered_ids))
+                .options(
+                    joinedload(DBNote.tags),
+                    joinedload(DBNote.outgoing_links),
+                    joinedload(DBNote.incoming_links),
+                )
+            )
+            db_notes_by_id = {
+                db_note.id: db_note
+                for db_note in session.execute(db_notes_query).unique().scalars().all()
+            }
+
+        result = []
+        for note_id in ordered_ids:
+            db_note = db_notes_by_id.get(note_id)
+            if db_note:
+                result.append((repository._db_note_to_note(db_note), rank_map[note_id]))
+        return result
 
     def find_notes_by_date_range(
         self,

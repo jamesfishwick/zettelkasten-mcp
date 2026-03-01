@@ -1,5 +1,6 @@
 """SQLAlchemy database models for the Zettelkasten MCP server."""
 import datetime
+import json
 from typing import List, Optional
 
 from sqlalchemy import (Column, DateTime, Engine, ForeignKey, Integer, String,
@@ -25,8 +26,22 @@ class DBNote(Base):
     title = Column(String(255), nullable=False, index=True)
     content = Column(Text, nullable=False)
     note_type = Column(String(50), default=NoteType.PERMANENT.value, nullable=False, index=True)
+    references_json = Column(Text, nullable=False, default="[]")
     created_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
+
+    @property
+    def references(self) -> list:
+        """Deserialize references from JSON storage."""
+        try:
+            return json.loads(self.references_json or "[]")
+        except (ValueError, TypeError):
+            return []
+
+    @references.setter
+    def references(self, value: list) -> None:
+        """Serialize references to JSON storage."""
+        self.references_json = json.dumps(value or [])
 
     tags = relationship(
         "DBTag", secondary=note_tags, back_populates="notes"
@@ -95,6 +110,16 @@ def init_db() -> "Engine":
     Base.metadata.create_all(engine)
 
     with engine.connect() as conn:
+        # Add references_json column to existing databases that predate this field.
+        try:
+            conn.execute(text(
+                "ALTER TABLE notes ADD COLUMN references_json TEXT NOT NULL DEFAULT '[]'"
+            ))
+            conn.commit()
+        except Exception:
+            # Column already exists — ignore.
+            conn.rollback()
+
         conn.execute(text("""
             CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts
             USING fts5(title, content, content='notes', content_rowid='rowid')
