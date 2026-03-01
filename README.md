@@ -265,8 +265,10 @@ In Claude Desktop, select a prompt from the prompt picker, then provide the requ
 | `fleeting` | Quick captures, unprocessed thoughts |
 | `literature` | Ideas from sources with citation |
 | `permanent` | Refined ideas in your own words |
-| `structure` | Maps organizing 7-15 related notes |
-| `hub` | Entry points into major domains |
+| `structure` | Maps organizing 7-15 related notes on a specific topic |
+| `hub` | Domain overview linking to structure notes; entry point for navigating a broad area of knowledge |
+
+**Structure vs. Hub:** A structure note organizes a cluster of permanent notes around a single topic — it is a curated map one level above the notes themselves. A hub note operates one level higher still: it links to structure notes (and occasionally key permanent notes) across an entire knowledge domain. Where a structure note answers "what do I know about X?", a hub note answers "how is my knowledge of this whole domain organized?" Most Zettelkastens need only a handful of hub notes.
 
 ---
 
