@@ -1,6 +1,8 @@
 # Zettelkasten MCP Server
 
-Model Context Protocol server for managing a Zettelkasten knowledge system with automatic cluster detection.
+zettelkasten-mcp is a Model Context Protocol server that gives a LMM an active role in managing a Zettelkasten knowledge system. Instead of assisting with note-taking, your LLM creates atomic notes, forms semantic links, and detects emergent knowledge clusters.
+
+Notes are stored as plain markdown files with YAML frontmatter. A SQLite database provides fast indexing and is rebuilt from files anytime. The system is compatible with Obsidian, VS Code + Foam, Logseq, and any markdown editor.
 
 ## Requirements
 
