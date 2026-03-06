@@ -3,6 +3,7 @@ import datetime
 import json
 import logging
 import os
+import re
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
@@ -49,10 +50,33 @@ class NoteRepository(Repository[Note]):
         with self.session_factory() as session:
             db_count = session.scalar(select(text("COUNT(*)")).select_from(DBNote))
 
-        file_count = len(list(self.notes_dir.glob("*.md")))
+        indexable_count = self._count_indexable_files()
 
-        if db_count != file_count:
+        if db_count != indexable_count:
             self.rebuild_index()
+
+    def _count_indexable_files(self) -> int:
+        """Count .md files that have a valid frontmatter 'id' field.
+
+        Reads only the frontmatter block (up to the closing '---') of each
+        file rather than full content, keeping startup cost low.
+        """
+        count = 0
+        for file_path in self.notes_dir.glob("*.md"):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    header = f.read(2048)
+                if not header.startswith("---"):
+                    continue
+                end = header.find("\n---", 3)
+                if end == -1:
+                    continue
+                frontmatter_block = header[3:end]
+                if re.search(r"^id:\s*\S", frontmatter_block, re.MULTILINE):
+                    count += 1
+            except OSError:
+                pass
+        return count
 
     def rebuild_index(self) -> None:
         """Rebuild the database index from all markdown files."""

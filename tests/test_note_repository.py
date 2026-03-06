@@ -185,6 +185,37 @@ def test_references_survive_update(note_repository):
     assert results[0].references == ["Eco, U. (1977). How to Write a Thesis."]
 
 
+def test_rebuild_index_if_needed_no_rebuild_when_in_sync(note_repository):
+    """No rebuild is triggered when the DB count matches indexable file count."""
+    from unittest.mock import patch
+    note_repository.create(Note(title="Sync Note", content="body", note_type=NoteType.PERMANENT))
+    with patch.object(note_repository, "rebuild_index") as mock_rebuild:
+        note_repository.rebuild_index_if_needed()
+        mock_rebuild.assert_not_called()
+
+
+def test_rebuild_index_if_needed_triggers_on_new_valid_file(note_repository):
+    """A rebuild fires when a new valid (id-bearing) file appears outside the repo."""
+    from unittest.mock import patch
+    note_repository.create(Note(title="Existing", content="body", note_type=NoteType.PERMANENT))
+    external = note_repository.notes_dir / "20260101T120000000000000.md"
+    external.write_text("---\nid: 20260101T120000000000000\ntitle: External\n---\nbody\n")
+    with patch.object(note_repository, "rebuild_index") as mock_rebuild:
+        note_repository.rebuild_index_if_needed()
+        mock_rebuild.assert_called_once()
+
+
+def test_rebuild_index_if_needed_ignores_files_without_id(note_repository):
+    """Non-note .md files (no frontmatter id) do not trigger a spurious rebuild."""
+    from unittest.mock import patch
+    note_repository.create(Note(title="Valid", content="body", note_type=NoteType.PERMANENT))
+    readme = note_repository.notes_dir / "README.md"
+    readme.write_text("# README\n\nNo frontmatter id here.\n")
+    with patch.object(note_repository, "rebuild_index") as mock_rebuild:
+        note_repository.rebuild_index_if_needed()
+        mock_rebuild.assert_not_called()
+
+
 def test_note_linking(note_repository):
     """Test creating links between notes."""
     # Create test notes
