@@ -21,7 +21,7 @@ Model Context Protocol server for managing a Zettelkasten knowledge system with 
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/slipbox-mcp.git
+git clone https://github.com/jamesfishwick/slipbox-mcp.git
 cd slipbox-mcp
 
 pipx install --editable .
@@ -72,8 +72,8 @@ The server creates these automatically, but explicit creation helps verify permi
       "args": ["-m", "slipbox_mcp.main"],
       "env": {
         "PYTHONPATH": "/absolute/path/to/slipbox-mcp/src",
-        "SLIPBOX_NOTES_DIR": "~/.local/share/mcp/slipbox/notes",
-        "SLIPBOX_DATABASE_PATH": "~/.local/share/mcp/slipbox/data/slipbox.db",
+        "SLIPBOX_NOTES_DIR": "/Users/yourname/.local/share/mcp/slipbox/notes",
+        "SLIPBOX_DATABASE_PATH": "/Users/yourname/.local/share/mcp/slipbox/data/slipbox.db",
         "SLIPBOX_LOG_LEVEL": "INFO"
       }
     }
@@ -81,9 +81,19 @@ The server creates these automatically, but explicit creation helps verify permi
 }
 ```
 
-Replace `/absolute/path/to/` with your actual path. The `PYTHONPATH` must point to the `src/` directory so Python can find the package. Environment variables set in `.env` are not read by Claude Desktop — configure them here instead.
+Replace `/absolute/path/to/` and `/Users/yourname/` with your actual paths. The `PYTHONPATH` must point to the `src/` directory so Python can find the package. Environment variables set in `.env` are not read by Claude Desktop — configure them here instead.
 
-> **Note:** This config assumes you cloned the repo and are using the local venv (`.venv/bin/python`). If you installed via `pipx install --editable .`, use the path that `which python` reports inside the pipx environment instead.
+> **Important:** `~` is NOT expanded in `claude_desktop_config.json`. Use full absolute paths for `SLIPBOX_NOTES_DIR` and `SLIPBOX_DATABASE_PATH` (e.g., `/Users/yourname/...` on macOS, `/home/yourname/...` on Linux). Using `~` will create a literal directory named `~` instead of resolving to your home directory.
+
+**If you installed via `pipx install --editable .`**, find the Python path with:
+
+```bash
+pipx environment --value VENV
+# Output: /Users/yourname/.local/share/pipx/venvs/slipbox-mcp
+# Append /bin/python to get the full path
+```
+
+Use `/Users/yourname/.local/share/pipx/venvs/slipbox-mcp/bin/python` as the `command` value.
 
 ### 5. Restart Claude Desktop
 
@@ -332,6 +342,27 @@ This populates the BM25 index from your existing notes. Search results will not 
 1. Check the path in `claude_desktop_config.json` is absolute (not relative)
 2. Verify the venv python exists: `ls -la /path/to/.venv/bin/python`
 3. Check Claude Desktop logs for errors
+
+### `ModuleNotFoundError: No module named 'slipbox_mcp'`
+
+The `PYTHONPATH` in your config is missing or wrong. It must point to the `src/` directory of the cloned repo:
+
+```json
+"PYTHONPATH": "/absolute/path/to/slipbox-mcp/src"
+```
+
+### Notes directory points to `~/...` literally
+
+If your notes directory ends up at `./~/...` relative to CWD, you used `~` in the JSON config. Claude Desktop does not expand `~`. Replace it with the full absolute path.
+
+### Search returns no results
+
+1. The FTS5 index may not be populated. Run `zk_rebuild_index` once to index existing notes.
+2. If you recently edited notes outside Claude, the index may be stale. Run `zk_rebuild_index`.
+
+### `zk_list_notes_by_date` returns empty results
+
+If `start_date` is later than `end_date`, no notes match and an empty result is returned — this is expected behavior, not an error.
 
 ### Database out of sync
 
