@@ -74,8 +74,8 @@ class NoteRepository(Repository[Note]):
                 frontmatter_block = header[3:end]
                 if re.search(r"^id:\s*\S", frontmatter_block, re.MULTILINE):
                     count += 1
-            except OSError:
-                pass
+            except OSError as e:
+                logger.warning("Could not read %s during indexable count; skipping: %s", file_path, e)
         return count
 
     def rebuild_index(self) -> None:

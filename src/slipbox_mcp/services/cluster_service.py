@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 MIN_CLUSTER_SIZE = 5
 CO_OCCURRENCE_THRESHOLD = 3
-REPORT_PATH = Path("~/.local/share/mcp/zettelkasten/cluster-analysis.json").expanduser()
+REPORT_PATH = Path("~/.local/share/mcp/slipbox/cluster-analysis.json").expanduser()
 
 
 @dataclass

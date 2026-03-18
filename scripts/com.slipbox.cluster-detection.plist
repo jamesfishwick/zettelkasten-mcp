@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.zettelkasten.cluster-detection</string>
+    <string>com.slipbox.cluster-detection</string>
     <key>ProgramArguments</key>
     <array>
         <string>/Users/jamesfishwick/Workspace/zettelkasten-mcp/.venv/bin/python</string>
@@ -17,9 +17,9 @@
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/tmp/zettelkasten-clusters.log</string>
+    <string>/tmp/slipbox-clusters.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/zettelkasten-clusters.err</string>
+    <string>/tmp/slipbox-clusters.err</string>
     <key>WorkingDirectory</key>
     <string>/Users/jamesfishwick/Workspace/zettelkasten-mcp</string>
 </dict>
