@@ -2,22 +2,32 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 load_dotenv()
+
+
+def _expand_path(raw: str) -> Path:
+    """Expand ~ in path strings and raise if expansion fails (e.g. ~nonexistentuser)."""
+    expanded = os.path.expanduser(raw)
+    if expanded.startswith("~"):
+        raise ValueError(
+            f"Path {raw!r} could not be expanded to an absolute path. "
+            "Use a full absolute path instead of a tilde shortcut."
+        )
+    return Path(expanded)
+
 
 class ZettelkastenConfig(BaseModel):
     """Configuration for the Zettelkasten server."""
     base_dir: Path = Field(
-        default_factory=lambda: Path(os.getenv("SLIPBOX_BASE_DIR", "."))
+        default_factory=lambda: _expand_path(os.getenv("SLIPBOX_BASE_DIR", "."))
     )
     notes_dir: Path = Field(
-        default_factory=lambda: Path(
-            os.getenv("SLIPBOX_NOTES_DIR", "data/notes")
-        )
+        default_factory=lambda: _expand_path(os.getenv("SLIPBOX_NOTES_DIR", "data/notes"))
     )
     database_path: Path = Field(
-        default_factory=lambda: Path(
+        default_factory=lambda: _expand_path(
             os.getenv("SLIPBOX_DATABASE_PATH", "data/db/slipbox.db")
         )
     )
@@ -51,4 +61,9 @@ class ZettelkastenConfig(BaseModel):
         db_path.parent.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{db_path}"
 
-config = ZettelkastenConfig()
+try:
+    config = ZettelkastenConfig()
+except (ValueError, ValidationError) as e:
+    import sys
+    print(f"Configuration error: {e}", file=sys.stderr)
+    raise SystemExit(1) from e

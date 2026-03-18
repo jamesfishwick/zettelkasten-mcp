@@ -312,3 +312,109 @@ def test_mcp_update_clears_references_with_empty_list(zettel_service):
     )
     updated = zettel_service.update_note(note.id, references=[])
     assert updated.references == []
+
+
+class TestMcpGuardClauses:
+    """Tests for input validation guard clauses in MCP tool handlers."""
+
+    def setup_method(self):
+        self.registered_tools = {}
+        self.mock_mcp = MagicMock()
+
+        def mock_tool_decorator(*args, **kwargs):
+            def tool_wrapper(func):
+                name = kwargs.get("name")
+                self.registered_tools[name] = func
+                return func
+            return tool_wrapper
+        self.mock_mcp.tool = mock_tool_decorator
+
+        self.mock_zettel_service = MagicMock()
+        self.mock_search_service = MagicMock()
+        self.mock_cluster_service = MagicMock()
+
+        self.mcp_patcher = patch("slipbox_mcp.server.mcp_server.FastMCP", return_value=self.mock_mcp)
+        self.zettel_patcher = patch("slipbox_mcp.server.mcp_server.ZettelService", return_value=self.mock_zettel_service)
+        self.search_patcher = patch("slipbox_mcp.server.mcp_server.SearchService", return_value=self.mock_search_service)
+        self.cluster_patcher = patch("slipbox_mcp.server.mcp_server.ClusterService", return_value=self.mock_cluster_service)
+
+        self.mcp_patcher.start()
+        self.zettel_patcher.start()
+        self.search_patcher.start()
+        self.cluster_patcher.start()
+
+        from slipbox_mcp.server.mcp_server import ZettelkastenMcpServer
+        self.server = ZettelkastenMcpServer()
+
+    def teardown_method(self):
+        self.mcp_patcher.stop()
+        self.zettel_patcher.stop()
+        self.search_patcher.stop()
+        self.cluster_patcher.stop()
+
+    def test_find_similar_notes_threshold_too_high(self):
+        func = self.registered_tools["zk_find_similar_notes"]
+        result = func(note_id="abc", threshold=1.5)
+        assert result == "Error: threshold must be between 0.0 and 1.0."
+        self.mock_zettel_service.find_similar_notes.assert_not_called()
+
+    def test_find_similar_notes_threshold_negative(self):
+        func = self.registered_tools["zk_find_similar_notes"]
+        result = func(note_id="abc", threshold=-0.1)
+        assert result == "Error: threshold must be between 0.0 and 1.0."
+
+    def test_find_similar_notes_threshold_boundary_values_accepted(self):
+        func = self.registered_tools["zk_find_similar_notes"]
+        self.mock_zettel_service.find_similar_notes.return_value = []
+        func(note_id="abc", threshold=0.0)
+        func(note_id="abc", threshold=1.0)
+        assert self.mock_zettel_service.find_similar_notes.call_count == 2
+
+    def test_find_similar_notes_limit_zero(self):
+        func = self.registered_tools["zk_find_similar_notes"]
+        result = func(note_id="abc", threshold=0.5, limit=0)
+        assert result == "Error: limit must be a positive integer."
+        self.mock_zettel_service.find_similar_notes.assert_not_called()
+
+    def test_find_similar_notes_limit_negative(self):
+        func = self.registered_tools["zk_find_similar_notes"]
+        result = func(note_id="abc", threshold=0.5, limit=-1)
+        assert result == "Error: limit must be a positive integer."
+
+    def test_find_central_notes_limit_zero(self):
+        func = self.registered_tools["zk_find_central_notes"]
+        result = func(limit=0)
+        assert result == "Error: limit must be a positive integer."
+        self.mock_search_service.find_central_notes.assert_not_called()
+
+    def test_find_central_notes_limit_negative(self):
+        func = self.registered_tools["zk_find_central_notes"]
+        result = func(limit=-5)
+        assert result == "Error: limit must be a positive integer."
+
+    def test_get_cluster_report_min_score_too_high(self):
+        func = self.registered_tools["zk_get_cluster_report"]
+        result = func(min_score=1.5)
+        assert result == "Error: min_score must be between 0.0 and 1.0."
+
+    def test_get_cluster_report_min_score_negative(self):
+        func = self.registered_tools["zk_get_cluster_report"]
+        result = func(min_score=-0.1)
+        assert result == "Error: min_score must be between 0.0 and 1.0."
+
+    def test_get_cluster_report_min_score_boundary_values_accepted(self):
+        func = self.registered_tools["zk_get_cluster_report"]
+        self.mock_cluster_service.load_report.return_value = None
+        self.mock_cluster_service.load_report.reset_mock()
+        # Boundary values 0.0 and 1.0 must not trigger the guard-clause error string
+        result_low = func(min_score=0.0)
+        result_high = func(min_score=1.0)
+        assert result_low != "Error: min_score must be between 0.0 and 1.0."
+        assert result_high != "Error: min_score must be between 0.0 and 1.0."
+        # Guard clause did not fire, so cluster_service was actually called
+        assert self.mock_cluster_service.load_report.call_count == 2
+
+    def test_get_cluster_report_limit_zero(self):
+        func = self.registered_tools["zk_get_cluster_report"]
+        result = func(min_score=0.5, limit=0)
+        assert result == "Error: limit must be a positive integer."

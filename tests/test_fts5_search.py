@@ -1,7 +1,9 @@
 """Tests for FTS5-backed search_by_text."""
 import pytest
+from unittest.mock import patch, MagicMock
+from sqlalchemy.exc import OperationalError
 from slipbox_mcp.models.schema import NoteType, Tag
-from slipbox_mcp.services.search_service import SearchService
+from slipbox_mcp.services.search_service import SearchResult, SearchService
 
 
 @pytest.fixture
@@ -88,10 +90,10 @@ def test_search_by_text_fts_special_chars_do_not_crash(zettel_service, search_se
         content="Some content here.",
         tags=[]
     )
-    # These would crash without escaping
-    assert search_service.search_by_text("AND OR NOT") == [] or True  # no crash
-    assert search_service.search_by_text('say "hello"') == [] or True  # no crash
-    assert search_service.search_by_text("*wildcard") == [] or True   # no crash
+    # These would crash without escaping — verify no exception and a list is returned
+    assert isinstance(search_service.search_by_text("AND OR NOT"), list)
+    assert isinstance(search_service.search_by_text('say "hello"'), list)
+    assert isinstance(search_service.search_by_text("*wildcard"), list)
 
 
 def test_search_combined_text_uses_bm25(zettel_service, search_service):
@@ -130,3 +132,78 @@ def test_search_combined_no_text_still_works(zettel_service, search_service):
     assert len(results) == 1
     assert results[0].note.id == note.id
     assert results[0].score == 1.0
+
+
+def test_search_by_text_fts5_operational_error_returns_empty(zettel_service, search_service):
+    """An FTS5 OperationalError must return [] rather than raise."""
+    fts5_err = OperationalError("fts5: syntax error near X", params=None, orig=Exception("fts5: syntax error near X"))
+    with patch.object(search_service.zettel_service.repository, "session_factory") as mock_sf:
+        mock_session = MagicMock()
+        mock_session.__enter__ = MagicMock(return_value=mock_session)
+        mock_session.__exit__ = MagicMock(return_value=False)
+        mock_session.execute.side_effect = fts5_err
+        mock_sf.return_value = mock_session
+        result = search_service.search_by_text("test query")
+    assert result == []
+
+
+def test_search_by_text_non_fts5_operational_error_reraises(zettel_service, search_service):
+    """A non-FTS5 OperationalError (e.g. schema issue) must re-raise, not swallow."""
+    schema_err = OperationalError("no such table: notes", params=None, orig=Exception("no such table: notes"))
+    with patch.object(search_service.zettel_service.repository, "session_factory") as mock_sf:
+        mock_session = MagicMock()
+        mock_session.__enter__ = MagicMock(return_value=mock_session)
+        mock_session.__exit__ = MagicMock(return_value=False)
+        mock_session.execute.side_effect = schema_err
+        mock_sf.return_value = mock_session
+        with pytest.raises(OperationalError):
+            search_service.search_by_text("test query")
+
+
+def test_search_combined_fts5_operational_error_returns_metadata_fallback(zettel_service, search_service):
+    """When FTS5 raises OperationalError, search_combined returns metadata-only results.
+
+    search_combined uses one session block with two execute() calls:
+    1. ORM Select query (metadata filter) — must succeed and return real DBNote objects
+    2. text() FTS5 query — raises OperationalError to trigger the fallback
+
+    We intercept at the execute() level, routing by SQL type so the metadata
+    query uses the real session and only the FTS5 call raises.
+    """
+    from sqlalchemy.sql.selectable import Select
+    from sqlalchemy.sql.elements import TextClause
+
+    note = zettel_service.create_note(
+        title="Fallback Note",
+        content="Content for fallback test.",
+        tags=["fallback-tag"],
+    )
+    fts5_err = OperationalError(
+        "fts5: syntax error near X", params=None,
+        orig=Exception("fts5: syntax error near X"),
+    )
+
+    repository = search_service.zettel_service.repository
+    original_factory = repository.session_factory
+
+    # Wrap session.execute: pass ORM queries through to the real session,
+    # raise FTS5 error only for text() queries.
+    with original_factory() as real_session:
+        original_execute = real_session.execute
+
+        def selective_execute(stmt, *args, **kwargs):
+            if isinstance(stmt, TextClause):
+                raise fts5_err
+            return original_execute(stmt, *args, **kwargs)
+
+        with patch.object(real_session, "execute", side_effect=selective_execute):
+            with patch.object(repository, "session_factory", return_value=real_session):
+                result = search_service.search_combined(
+                    query_text="fallback query", tags=["fallback-tag"]
+                )
+
+    assert isinstance(result, list)
+    assert len(result) >= 1, "Fallback must return at least the metadata-matched note"
+    assert all(r.score == 0.0 for r in result)
+    assert all("text search unavailable" in r.matched_context for r in result)
+    assert all(r.matched_terms == set() for r in result)

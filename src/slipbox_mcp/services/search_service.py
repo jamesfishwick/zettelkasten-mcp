@@ -6,6 +6,7 @@ from typing import List, Optional, Set, Tuple, Union
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import or_, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import joinedload
 
 from slipbox_mcp.models.db_models import DBLink, DBNote, DBTag
@@ -58,7 +59,20 @@ class SearchService:
                 WHERE notes_fts MATCH :query
                 ORDER BY bm25(notes_fts)
             """)
-            rows = session.execute(sql, {"query": fts_query}).fetchall()
+            try:
+                rows = session.execute(sql, {"query": fts_query}).fetchall()
+            except OperationalError as e:
+                err = str(e).lower()
+                if "no such table" in err:
+                    if "notes_fts" in err:
+                        logger.error("FTS5 table 'notes_fts' missing — run zk_rebuild_index: %s", e)
+                    else:
+                        logger.error("Required table missing from database schema: %s", e)
+                    raise
+                if "fts5" in err or "unterminated string" in err:
+                    logger.warning("FTS5 query syntax error for %r: %s", fts_query, e)
+                    return []
+                raise
 
         results = []
         for row in rows:
@@ -265,7 +279,32 @@ class SearchService:
                 WHERE notes_fts MATCH :query
                 ORDER BY bm25(notes_fts)
             """)
-            fts_rows = session.execute(fts_sql, {"query": fts_query}).fetchall()
+            try:
+                fts_rows = session.execute(fts_sql, {"query": fts_query}).fetchall()
+            except OperationalError as e:
+                err = str(e).lower()
+                if "no such table" in err:
+                    if "notes_fts" in err:
+                        logger.error("FTS5 table 'notes_fts' missing — run zk_rebuild_index: %s", e)
+                    else:
+                        logger.error("Required table missing from database schema: %s", e)
+                    raise
+                if "fts5" in err or "unterminated string" in err:
+                    logger.warning(
+                        "FTS5 query syntax error for %r, returning metadata-only results: %s",
+                        fts_query, e,
+                    )
+                    notes = [repository._db_note_to_note(n) for n in db_notes]
+                    return [
+                        SearchResult(
+                            note=n,
+                            score=0.0,
+                            matched_terms=set(),
+                            matched_context="(text search unavailable — showing metadata matches only)",
+                        )
+                        for n in notes
+                    ]
+                raise
 
         results = []
         for row in fts_rows:

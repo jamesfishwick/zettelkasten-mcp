@@ -472,6 +472,12 @@ class ZettelkastenMcpServer:
                 limit: Maximum results (default: 5)
             """
             try:
+                if not 0.0 <= threshold <= 1.0:
+                    logger.warning("zk_find_similar_notes: threshold %r out of range [0.0, 1.0]", threshold)
+                    return "Error: threshold must be between 0.0 and 1.0."
+                if limit <= 0:
+                    logger.warning("zk_find_similar_notes: limit %r must be a positive integer", limit)
+                    return "Error: limit must be a positive integer."
                 similar_notes = self.zettel_service.find_similar_notes(str(note_id), threshold)
                 similar_notes = similar_notes[:limit]
                 if not similar_notes:
@@ -502,6 +508,9 @@ class ZettelkastenMcpServer:
                 limit: Maximum results (default: 10)
             """
             try:
+                if limit <= 0:
+                    logger.warning("zk_find_central_notes: limit %r must be a positive integer", limit)
+                    return "Error: limit must be a positive integer."
                 central_notes = self.search_service.find_central_notes(limit)
                 if not central_notes:
                     return "No notes found with connections."
@@ -709,6 +718,12 @@ class ZettelkastenMcpServer:
                 refresh: Force regeneration of cluster analysis (default: false)
             """
             try:
+                if not 0.0 <= min_score <= 1.0:
+                    logger.warning("zk_get_cluster_report: min_score %r out of range [0.0, 1.0]", min_score)
+                    return "Error: min_score must be between 0.0 and 1.0."
+                if limit <= 0:
+                    logger.warning("zk_get_cluster_report: limit %r must be a positive integer", limit)
+                    return "Error: limit must be a positive integer."
                 if refresh:
                     report = self.cluster_service.detect_clusters()
                     self.cluster_service.save_report(report)
