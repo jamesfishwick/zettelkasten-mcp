@@ -5,8 +5,8 @@ from pathlib import Path
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from zettelkasten_mcp.services.cluster_service import ClusterService
-from zettelkasten_mcp.services.zettel_service import ZettelService
+from slipbox_mcp.services.cluster_service import ClusterService
+from slipbox_mcp.services.zettel_service import ZettelService
 
 def main():
     print("Starting cluster detection...")

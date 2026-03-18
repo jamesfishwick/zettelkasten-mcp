@@ -3,8 +3,8 @@
 import pytest
 from unittest.mock import patch, MagicMock, call
 
-from zettelkasten_mcp.server.mcp_server import ZettelkastenMcpServer
-from zettelkasten_mcp.models.schema import LinkType, NoteType
+from slipbox_mcp.server.mcp_server import ZettelkastenMcpServer
+from slipbox_mcp.models.schema import LinkType, NoteType
 
 class TestMcpServer:
     """Tests for the ZettelkastenMcpServer class."""
@@ -32,9 +32,9 @@ class TestMcpServer:
         self.mock_search_service = MagicMock()
         
         # Create patchers for FastMCP, ZettelService, and SearchService
-        self.mcp_patcher = patch('zettelkasten_mcp.server.mcp_server.FastMCP', return_value=self.mock_mcp)
-        self.zettel_patcher = patch('zettelkasten_mcp.server.mcp_server.ZettelService', return_value=self.mock_zettel_service)
-        self.search_patcher = patch('zettelkasten_mcp.server.mcp_server.SearchService', return_value=self.mock_search_service)
+        self.mcp_patcher = patch('slipbox_mcp.server.mcp_server.FastMCP', return_value=self.mock_mcp)
+        self.zettel_patcher = patch('slipbox_mcp.server.mcp_server.ZettelService', return_value=self.mock_zettel_service)
+        self.search_patcher = patch('slipbox_mcp.server.mcp_server.SearchService', return_value=self.mock_search_service)
         
         # Start the patchers
         self.mcp_patcher.start()
@@ -232,14 +232,14 @@ class TestMcpServer:
 
 
 def test_note_has_references_field():
-    from zettelkasten_mcp.models.schema import Note
+    from slipbox_mcp.models.schema import Note
     note = Note(title="Test", content="Body")
     assert hasattr(note, "references")
     assert note.references == []
 
 
 def test_note_references_roundtrip():
-    from zettelkasten_mcp.models.schema import Note
+    from slipbox_mcp.models.schema import Note
     note = Note(
         title="Test",
         content="Body",
@@ -251,8 +251,8 @@ def test_note_references_roundtrip():
 
 def test_note_to_markdown_includes_references(note_repository):
     import frontmatter as fm
-    from zettelkasten_mcp.models.schema import Note
-    from zettelkasten_mcp.config import config
+    from slipbox_mcp.models.schema import Note
+    from slipbox_mcp.config import config
     note = Note(
         title="Cited Note",
         content="This idea came from a book.",
@@ -268,7 +268,7 @@ def test_note_to_markdown_includes_references(note_repository):
 
 
 def test_references_roundtrip_via_file(note_repository):
-    from zettelkasten_mcp.models.schema import Note
+    from slipbox_mcp.models.schema import Note
     note = Note(
         title="Roundtrip Note",
         content="Body text.",

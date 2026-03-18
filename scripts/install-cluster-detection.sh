@@ -13,7 +13,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
-PLIST_NAME="com.zettelkasten.cluster-detection.plist"
+PLIST_NAME="com.slipbox.cluster-detection.plist"
 PLIST_SOURCE="$SCRIPT_DIR/$PLIST_NAME"
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME"
 
@@ -30,7 +30,7 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 uninstall() {
     info "Uninstalling cluster detection LaunchAgent..."
 
-    if launchctl list | grep -q "com.zettelkasten.cluster-detection"; then
+    if launchctl list | grep -q "com.slipbox.cluster-detection"; then
         launchctl unload "$PLIST_DEST" 2>/dev/null || true
         info "LaunchAgent unloaded"
     fi
@@ -71,7 +71,7 @@ install() {
     fi
 
     # Unload existing if present
-    if launchctl list | grep -q "com.zettelkasten.cluster-detection"; then
+    if launchctl list | grep -q "com.slipbox.cluster-detection"; then
         warn "Existing LaunchAgent found, unloading..."
         launchctl unload "$PLIST_DEST" 2>/dev/null || true
     fi
@@ -91,7 +91,7 @@ install() {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.zettelkasten.cluster-detection</string>
+    <string>com.slipbox.cluster-detection</string>
     <key>ProgramArguments</key>
     <array>
         <string>$PYTHON_PATH</string>
@@ -105,9 +105,9 @@ install() {
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/tmp/zettelkasten-clusters.log</string>
+    <string>/tmp/slipbox-clusters.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/zettelkasten-clusters.err</string>
+    <string>/tmp/slipbox-clusters.err</string>
     <key>WorkingDirectory</key>
     <string>$REPO_DIR</string>
 </dict>
@@ -118,7 +118,7 @@ EOF
     launchctl load "$PLIST_DEST"
 
     # Verify it loaded
-    if launchctl list | grep -q "com.zettelkasten.cluster-detection"; then
+    if launchctl list | grep -q "com.slipbox.cluster-detection"; then
         info "LaunchAgent loaded successfully"
     else
         error "Failed to load LaunchAgent"
@@ -133,7 +133,7 @@ EOF
     echo "  source .venv/bin/activate && python scripts/detect_clusters.py"
     echo ""
     echo "To check logs:"
-    echo "  cat /tmp/zettelkasten-clusters.log"
+    echo "  cat /tmp/slipbox-clusters.log"
     echo ""
     echo "To uninstall:"
     echo "  ./scripts/install-cluster-detection.sh --uninstall"

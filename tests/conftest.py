@@ -4,10 +4,10 @@ import tempfile
 from pathlib import Path
 import pytest
 from sqlalchemy import create_engine
-from zettelkasten_mcp.config import config
-from zettelkasten_mcp.models.db_models import Base
-from zettelkasten_mcp.services.zettel_service import ZettelService
-from zettelkasten_mcp.storage.note_repository import NoteRepository
+from slipbox_mcp.config import config
+from slipbox_mcp.models.db_models import Base
+from slipbox_mcp.services.zettel_service import ZettelService
+from slipbox_mcp.storage.note_repository import NoteRepository
 
 @pytest.fixture
 def temp_dirs():

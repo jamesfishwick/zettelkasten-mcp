@@ -13,9 +13,9 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
-PLIST_NAME="com.zettelkasten.watcher.plist"
+PLIST_NAME="com.slipbox.watcher.plist"
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME"
-LOG_DIR="$HOME/.local/share/mcp/zettelkasten"
+LOG_DIR="$HOME/.local/share/mcp/slipbox"
 
 # Colors for output
 RED='\033[0;31m'
@@ -30,7 +30,7 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 uninstall() {
     info "Uninstalling file watcher LaunchAgent..."
 
-    if launchctl list 2>/dev/null | grep -q "com.zettelkasten.watcher"; then
+    if launchctl list 2>/dev/null | grep -q "com.slipbox.watcher"; then
         launchctl unload "$PLIST_DEST" 2>/dev/null || true
         info "LaunchAgent unloaded"
     fi
@@ -72,7 +72,7 @@ install() {
     fi
 
     # Unload existing if present
-    if launchctl list 2>/dev/null | grep -q "com.zettelkasten.watcher"; then
+    if launchctl list 2>/dev/null | grep -q "com.slipbox.watcher"; then
         warn "Existing LaunchAgent found, unloading..."
         launchctl unload "$PLIST_DEST" 2>/dev/null || true
     fi
@@ -94,7 +94,7 @@ install() {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.zettelkasten.watcher</string>
+    <string>com.slipbox.watcher</string>
     <key>ProgramArguments</key>
     <array>
         <string>$PYTHON_PATH</string>
@@ -121,7 +121,7 @@ EOF
     sleep 1
 
     # Verify it loaded
-    if launchctl list 2>/dev/null | grep -q "com.zettelkasten.watcher"; then
+    if launchctl list 2>/dev/null | grep -q "com.slipbox.watcher"; then
         info "LaunchAgent loaded successfully"
     else
         error "Failed to load LaunchAgent. Check: cat $LOG_DIR/watcher.log"
@@ -136,7 +136,7 @@ EOF
     echo "  - Rebuild the index when .md files change"
     echo ""
     echo "To check status:"
-    echo "  launchctl list | grep zettelkasten.watcher"
+    echo "  launchctl list | grep slipbox.watcher"
     echo ""
     echo "To view logs:"
     echo "  tail -f $LOG_DIR/watcher.log"

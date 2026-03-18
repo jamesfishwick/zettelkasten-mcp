@@ -13,11 +13,11 @@ from sqlalchemy import and_, create_engine, delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from zettelkasten_mcp.config import config
-from zettelkasten_mcp.models.db_models import (Base, DBLink, DBNote, DBTag,
+from slipbox_mcp.config import config
+from slipbox_mcp.models.db_models import (Base, DBLink, DBNote, DBTag,
                                             get_session_factory, init_db)
-from zettelkasten_mcp.models.schema import Link, LinkType, Note, NoteType, Tag
-from zettelkasten_mcp.storage.base import Repository
+from slipbox_mcp.models.schema import Link, LinkType, Note, NoteType, Tag
+from slipbox_mcp.storage.base import Repository
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +74,8 @@ class NoteRepository(Repository[Note]):
                 frontmatter_block = header[3:end]
                 if re.search(r"^id:\s*\S", frontmatter_block, re.MULTILINE):
                     count += 1
-            except OSError:
-                pass
+            except (OSError, UnicodeDecodeError) as e:
+                logger.warning("Could not read %s during indexable count; skipping: %s", file_path, e)
         return count
 
     def rebuild_index(self) -> None:
@@ -379,7 +379,7 @@ class NoteRepository(Repository[Note]):
     def create(self, note: Note) -> Note:
         """Create a new note."""
         if not note.id:
-            from zettelkasten_mcp.models.schema import generate_id
+            from slipbox_mcp.models.schema import generate_id
             note.id = generate_id()
 
         markdown = self._note_to_markdown(note)

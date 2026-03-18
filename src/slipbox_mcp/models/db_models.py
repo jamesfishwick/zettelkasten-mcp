@@ -11,8 +11,8 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-from zettelkasten_mcp.config import config
-from zettelkasten_mcp.models.schema import LinkType, NoteType
+from slipbox_mcp.config import config
+from slipbox_mcp.models.schema import LinkType, NoteType
 
 Base = declarative_base()
 

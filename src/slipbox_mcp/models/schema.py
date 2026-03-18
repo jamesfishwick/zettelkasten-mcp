@@ -180,7 +180,7 @@ class Note(BaseModel):
 
     def to_markdown(self) -> str:
         """Convert the note to a markdown formatted string."""
-        from zettelkasten_mcp.config import config
+        from slipbox_mcp.config import config
         tags_str = ", ".join([tag.name for tag in self.tags])
         links_str = ""
         if self.links:

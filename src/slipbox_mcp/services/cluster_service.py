@@ -8,15 +8,15 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from zettelkasten_mcp.config import config
-from zettelkasten_mcp.models.schema import Note, NoteType
-from zettelkasten_mcp.services.zettel_service import ZettelService
+from slipbox_mcp.config import config
+from slipbox_mcp.models.schema import Note, NoteType
+from slipbox_mcp.services.zettel_service import ZettelService
 
 logger = logging.getLogger(__name__)
 
 MIN_CLUSTER_SIZE = 5
 CO_OCCURRENCE_THRESHOLD = 3
-REPORT_PATH = Path("~/.local/share/mcp/zettelkasten/cluster-analysis.json").expanduser()
+REPORT_PATH = Path("~/.local/share/mcp/slipbox/cluster-analysis.json").expanduser()
 
 
 @dataclass

@@ -3,7 +3,7 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "zettelkasten-mcp"
+name = "slipbox-mcp"
 version = "1.2.1"
 description = "A Zettelkasten knowledge management system as an MCP server"
 authors = [
@@ -36,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-zk = "zettelkasten_mcp.cli:main"
+zk = "slipbox_mcp.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

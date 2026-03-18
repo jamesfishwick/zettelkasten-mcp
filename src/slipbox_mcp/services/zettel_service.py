@@ -3,9 +3,9 @@ import datetime
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from zettelkasten_mcp.config import config
-from zettelkasten_mcp.models.schema import Link, LinkType, Note, NoteType, Tag
-from zettelkasten_mcp.storage.note_repository import NoteRepository
+from slipbox_mcp.config import config
+from slipbox_mcp.models.schema import Link, LinkType, Note, NoteType, Tag
+from slipbox_mcp.storage.note_repository import NoteRepository
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-# Zettelkasten MCP Server
+# Slipbox MCP Server
 
 Model Context Protocol server for managing a Zettelkasten knowledge system with automatic cluster detection.
 
@@ -21,8 +21,8 @@ Model Context Protocol server for managing a Zettelkasten knowledge system with 
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/zettelkasten-mcp.git
-cd zettelkasten-mcp
+git clone https://github.com/yourusername/slipbox-mcp.git
+cd slipbox-mcp
 
 pipx install --editable .
 ```
@@ -33,13 +33,13 @@ Create a `.env` file or set environment variables:
 
 ```bash
 # Where notes are stored as markdown files
-export ZETTELKASTEN_NOTES_DIR="~/.local/share/mcp/zettelkasten/notes"
+export SLIPBOX_NOTES_DIR="~/.local/share/mcp/slipbox/notes"
 
 # SQLite database path
-export ZETTELKASTEN_DATABASE_PATH="~/.local/share/mcp/zettelkasten/data/zettelkasten.db"
+export SLIPBOX_DATABASE_PATH="~/.local/share/mcp/slipbox/data/slipbox.db"
 
 # Optional: Log level (DEBUG, INFO, WARNING, ERROR)
-export ZETTELKASTEN_LOG_LEVEL="INFO"
+export SLIPBOX_LOG_LEVEL="INFO"
 ```
 
 Or copy the example:
@@ -52,8 +52,8 @@ cp .env.example .env
 ### 3. Initialize Data Directories
 
 ```bash
-mkdir -p ~/.local/share/mcp/zettelkasten/notes
-mkdir -p ~/.local/share/mcp/zettelkasten/data
+mkdir -p ~/.local/share/mcp/slipbox/notes
+mkdir -p ~/.local/share/mcp/slipbox/data
 ```
 
 The server creates these automatically, but explicit creation helps verify permissions.
@@ -67,14 +67,14 @@ The server creates these automatically, but explicit creation helps verify permi
 ```json
 {
   "mcpServers": {
-    "zettelkasten": {
-      "command": "/absolute/path/to/zettelkasten-mcp/.venv/bin/python",
-      "args": ["-m", "zettelkasten_mcp.main"],
+    "slipbox": {
+      "command": "/absolute/path/to/slipbox-mcp/.venv/bin/python",
+      "args": ["-m", "slipbox_mcp.main"],
       "env": {
-        "PYTHONPATH": "/absolute/path/to/zettelkasten-mcp/src",
-        "ZETTELKASTEN_NOTES_DIR": "~/.local/share/mcp/zettelkasten/notes",
-        "ZETTELKASTEN_DATABASE_PATH": "~/.local/share/mcp/zettelkasten/data/zettelkasten.db",
-        "ZETTELKASTEN_LOG_LEVEL": "INFO"
+        "PYTHONPATH": "/absolute/path/to/slipbox-mcp/src",
+        "SLIPBOX_NOTES_DIR": "~/.local/share/mcp/slipbox/notes",
+        "SLIPBOX_DATABASE_PATH": "~/.local/share/mcp/slipbox/data/slipbox.db",
+        "SLIPBOX_LOG_LEVEL": "INFO"
       }
     }
   }
@@ -94,7 +94,7 @@ Quit and reopen Claude Desktop to load the MCP server.
 In Claude:
 
 - "Create a test note about something"
-- "Search my zettelkasten for test"
+- "Search my slipbox for test"
 - "Find orphaned notes"
 
 ---
@@ -121,7 +121,7 @@ source .venv/bin/activate
 python scripts/detect_clusters.py
 ```
 
-Output saved to `~/.local/share/mcp/zettelkasten/cluster-analysis.json`.
+Output saved to `~/.local/share/mcp/slipbox/cluster-analysis.json`.
 
 ### Uninstall
 
@@ -160,10 +160,10 @@ Edit a note file—you should see "rebuilding index..." in the watcher output.
 ### Check Status
 
 ```bash
-launchctl list | grep zettelkasten.watcher
+launchctl list | grep slipbox.watcher
 
 # View logs
-tail -f ~/.local/share/mcp/zettelkasten/watcher.log
+tail -f ~/.local/share/mcp/slipbox/watcher.log
 ```
 
 ### Uninstall
@@ -344,11 +344,11 @@ zk_rebuild_index
 ### Cluster detection not running
 
 ```bash
-launchctl list | grep zettelkasten.cluster-detection
-# Should show: - 0 com.zettelkasten.cluster-detection
+launchctl list | grep slipbox.cluster-detection
+# Should show: - 0 com.slipbox.cluster-detection
 
 # Check logs
-cat /tmp/zettelkasten-clusters.log
+cat /tmp/slipbox-clusters.log
 
 # Reinstall if needed
 ./scripts/install-cluster-detection.sh --uninstall
@@ -358,11 +358,11 @@ cat /tmp/zettelkasten-clusters.log
 ### File watcher not running
 
 ```bash
-launchctl list | grep zettelkasten.watcher
-# Should show: - 0 com.zettelkasten.watcher
+launchctl list | grep slipbox.watcher
+# Should show: - 0 com.slipbox.watcher
 
 # Check logs
-cat ~/.local/share/mcp/zettelkasten/watcher.log
+cat ~/.local/share/mcp/slipbox/watcher.log
 
 # Reinstall if needed
 ./scripts/install-file-watcher.sh --uninstall
@@ -378,7 +378,7 @@ cat ~/.local/share/mcp/zettelkasten/watcher.log
 pytest
 
 # Run with debug logging
-ZETTELKASTEN_LOG_LEVEL=DEBUG python -m zettelkasten_mcp
+SLIPBOX_LOG_LEVEL=DEBUG python -m slipbox_mcp
 
 # Run cluster detection manually
 python scripts/detect_clusters.py

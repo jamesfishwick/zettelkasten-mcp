@@ -6,7 +6,7 @@ import re
 import pytest
 from unittest.mock import patch
 from pydantic import ValidationError
-from zettelkasten_mcp.models.schema import Link, LinkType, Note, NoteType, Tag, generate_id
+from slipbox_mcp.models.schema import Link, LinkType, Note, NoteType, Tag, generate_id
 
 class TestNoteModel:
     """Tests for the Note model."""

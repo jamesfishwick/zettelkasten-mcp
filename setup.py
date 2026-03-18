@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 setup(
-    name="zettelkasten_mcp",
+    name="slipbox_mcp",
     version="1.2.1",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
@@ -25,7 +25,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "zettelkasten-mcp=zettelkasten_mcp.main:main",
+            "slipbox-mcp=slipbox_mcp.main:main",
         ],
     },
 )

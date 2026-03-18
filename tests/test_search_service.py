@@ -2,8 +2,8 @@
 """Tests for the search service in the Zettelkasten MCP server."""
 import datetime
 import pytest
-from zettelkasten_mcp.models.schema import LinkType, Note, NoteType, Tag
-from zettelkasten_mcp.services.search_service import SearchResult, SearchService
+from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
+from slipbox_mcp.services.search_service import SearchResult, SearchService
 
 
 class TestSearchService:

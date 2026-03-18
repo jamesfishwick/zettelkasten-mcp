@@ -20,8 +20,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from zettelkasten_mcp.config import config
-from zettelkasten_mcp.storage.note_repository import NoteRepository
+from slipbox_mcp.config import config
+from slipbox_mcp.storage.note_repository import NoteRepository
 
 
 class NotesChangeHandler(FileSystemEventHandler):

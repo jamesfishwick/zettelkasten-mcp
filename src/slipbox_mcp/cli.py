@@ -15,10 +15,10 @@ from datetime import datetime
 # Handle broken pipe gracefully (e.g., when piping to head)
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-from zettelkasten_mcp.services.zettel_service import ZettelService
-from zettelkasten_mcp.services.cluster_service import ClusterService
-from zettelkasten_mcp.services.search_service import SearchService
-from zettelkasten_mcp.storage.note_repository import NoteRepository
+from slipbox_mcp.services.zettel_service import ZettelService
+from slipbox_mcp.services.cluster_service import ClusterService
+from slipbox_mcp.services.search_service import SearchService
+from slipbox_mcp.storage.note_repository import NoteRepository
 
 
 def cmd_status(args):

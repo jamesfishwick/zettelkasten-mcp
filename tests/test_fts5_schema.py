@@ -22,7 +22,7 @@ def test_fts5_columns(note_repository):
 
 def test_fts5_trigger_sync_on_insert(note_repository):
     """Inserting into notes via repository must auto-populate notes_fts via trigger."""
-    from zettelkasten_mcp.models.schema import Note, NoteType, Tag
+    from slipbox_mcp.models.schema import Note, NoteType, Tag
 
     note = note_repository.create(Note(
         title="TriggerSyncTitle",
@@ -40,7 +40,7 @@ def test_fts5_trigger_sync_on_insert(note_repository):
 
 def test_fts5_populated_after_rebuild(note_repository):
     """FTS index must be queryable after rebuild_index runs."""
-    from zettelkasten_mcp.models.schema import Note, NoteType, Tag
+    from slipbox_mcp.models.schema import Note, NoteType, Tag
 
     note = note_repository.create(Note(
         title="Unique Zettelkasten Term",

@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import or_, select, text
 from sqlalchemy.orm import joinedload
 
-from zettelkasten_mcp.models.db_models import DBLink, DBNote, DBTag
-from zettelkasten_mcp.models.schema import LinkType, Note, NoteType, Tag
-from zettelkasten_mcp.services.zettel_service import ZettelService
+from slipbox_mcp.models.db_models import DBLink, DBNote, DBTag
+from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
+from slipbox_mcp.services.zettel_service import ZettelService
 
 @dataclass
 class SearchResult:

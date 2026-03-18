@@ -1,7 +1,7 @@
 """Tests for FTS5-backed search_by_text."""
 import pytest
-from zettelkasten_mcp.models.schema import NoteType, Tag
-from zettelkasten_mcp.services.search_service import SearchService
+from slipbox_mcp.models.schema import NoteType, Tag
+from slipbox_mcp.services.search_service import SearchService
 
 
 @pytest.fixture

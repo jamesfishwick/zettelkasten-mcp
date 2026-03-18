@@ -9,20 +9,20 @@ load_dotenv()
 class ZettelkastenConfig(BaseModel):
     """Configuration for the Zettelkasten server."""
     base_dir: Path = Field(
-        default_factory=lambda: Path(os.getenv("ZETTELKASTEN_BASE_DIR", "."))
+        default_factory=lambda: Path(os.getenv("SLIPBOX_BASE_DIR", "."))
     )
     notes_dir: Path = Field(
         default_factory=lambda: Path(
-            os.getenv("ZETTELKASTEN_NOTES_DIR", "data/notes")
+            os.getenv("SLIPBOX_NOTES_DIR", "data/notes")
         )
     )
     database_path: Path = Field(
         default_factory=lambda: Path(
-            os.getenv("ZETTELKASTEN_DATABASE_PATH", "data/db/zettelkasten.db")
+            os.getenv("SLIPBOX_DATABASE_PATH", "data/db/slipbox.db")
         )
     )
     server_name: str = Field(
-        default=os.getenv("ZETTELKASTEN_SERVER_NAME", "zettelkasten-mcp")
+        default=os.getenv("SLIPBOX_SERVER_NAME", "slipbox-mcp")
     )
     server_version: str = Field(default="1.2.1")
     id_date_format: str = Field(default="%Y%m%dT%H%M%S")
