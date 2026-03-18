@@ -74,7 +74,7 @@ class NoteRepository(Repository[Note]):
                 frontmatter_block = header[3:end]
                 if re.search(r"^id:\s*\S", frontmatter_block, re.MULTILINE):
                     count += 1
-            except OSError as e:
+            except (OSError, UnicodeDecodeError) as e:
                 logger.warning("Could not read %s during indexable count; skipping: %s", file_path, e)
         return count
 

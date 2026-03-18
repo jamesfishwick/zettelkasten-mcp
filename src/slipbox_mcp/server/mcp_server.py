@@ -637,7 +637,7 @@ class ZettelkastenMcpServer:
 
     def _register_resources(self) -> None:
 
-        @self.mcp.resource("zettelkasten://maintenance-status")
+        @self.mcp.resource("slipbox://maintenance-status")
         def get_maintenance_status() -> dict:
             """Current Zettelkasten maintenance status.
 
@@ -820,7 +820,7 @@ class ZettelkastenMcpServer:
             - Connection patterns (notes that link to each other)
             - Structure note coverage (which clusters already have structure notes)
 
-            Results saved to ~/.local/share/mcp/zettelkasten/cluster-analysis.json
+            Results saved to ~/.local/share/mcp/slipbox/cluster-analysis.json
             """
             try:
                 report = self.cluster_service.detect_clusters()

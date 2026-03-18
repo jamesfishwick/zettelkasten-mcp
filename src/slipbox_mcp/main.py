@@ -64,11 +64,11 @@ def update_config(args):
 
 def main():
     """Run the Zettelkasten MCP server."""
-    _warn_renamed_env_vars()
     args = parse_args()
     update_config(args)
 
     setup_logging(args.log_level)
+    _warn_renamed_env_vars()
     logger = logging.getLogger(__name__)
 
     notes_dir = config.get_absolute_path(config.notes_dir)
