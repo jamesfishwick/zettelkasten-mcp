@@ -142,7 +142,7 @@ def cmd_export(args):
         print(f"Note not found: {args.note_id}", file=sys.stderr)
         sys.exit(1)
 
-    print(zettel.export_note(note))
+    print(zettel.export_note(note.id))
 
 
 def cmd_tags(args):
