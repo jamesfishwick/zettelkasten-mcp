@@ -268,7 +268,7 @@ class NoteRepository(Repository[Note]):
             try:
                 notes.append(self._db_note_to_note(db_note))
             except Exception as e:
-                logger.error(f"Error converting note {db_note.id}: {e}")
+                logger.error("Error converting note %s: %s", db_note.id, e)
         return notes
 
     def _get_or_create_tag(self, session: Session, tag_name: str) -> DBTag:

@@ -69,7 +69,7 @@ class SearchService:
                     else:
                         logger.error("Required table missing from database schema: %s", e)
                     raise
-                if "fts5" in err or "unterminated string" in err:
+                if "fts5" in err or ("unterminated string" in err and "notes_fts" in err):
                     logger.warning("FTS5 query syntax error for %r: %s", fts_query, e)
                     return []
                 raise
@@ -273,7 +273,7 @@ class SearchService:
                     else:
                         logger.error("Required table missing from database schema: %s", e)
                     raise
-                if "fts5" in err or "unterminated string" in err:
+                if "fts5" in err or ("unterminated string" in err and "notes_fts" in err):
                     logger.warning(
                         "FTS5 query syntax error for %r, returning metadata-only results: %s",
                         fts_query, e,

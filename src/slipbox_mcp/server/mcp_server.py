@@ -212,7 +212,7 @@ class ZettelkastenMcpServer:
 
                 tag_list = None
                 if tags is not None:  # Allow empty string to clear tags
-                    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+                    tag_list = _parse_tags(tags)
 
                 ref_list = _parse_refs(references) if references is not None else None
 
