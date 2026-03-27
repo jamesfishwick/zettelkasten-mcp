@@ -94,25 +94,6 @@ class TestNoteModel:
         note.remove_link("target456")
         assert len(note.links) == 0
 
-    def test_note_to_markdown(self):
-        """Test converting a note to markdown format."""
-        note = Note(
-            id="202501010000",
-            title="Markdown Test",
-            content="Testing markdown conversion.",
-            note_type=NoteType.PERMANENT,
-            tags=[Tag(name="test"), Tag(name="markdown")]
-        )
-        note.add_link("target123", LinkType.REFERENCE, "Reference link")
-        markdown = note.to_markdown()
-        # Check basic structure
-        assert "# Markdown Test" in markdown
-        assert "Testing markdown conversion." in markdown
-        assert "test" in markdown
-        assert "markdown" in markdown
-        assert "Reference link" in markdown
-        assert "target123" in markdown
-
 
 class TestLinkModel:
     """Tests for the Link model."""

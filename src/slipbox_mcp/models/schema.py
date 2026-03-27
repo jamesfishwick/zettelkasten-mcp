@@ -177,21 +177,3 @@ class Note(BaseModel):
     def get_linked_note_ids(self) -> Set[str]:
         """Get all note IDs that this note links to."""
         return {link.target_id for link in self.links}
-
-    def to_markdown(self) -> str:
-        """Convert the note to a markdown formatted string."""
-        from slipbox_mcp.config import config
-        tags_str = ", ".join([tag.name for tag in self.tags])
-        links_str = ""
-        if self.links:
-            links_str = "\n".join([
-                f"- [{link.link_type}] [[{link.target_id}]] {link.description or ''}"
-                for link in self.links
-            ])
-        return config.default_note_template.format(
-            title=self.title,
-            content=self.content,
-            created_at=self.created_at.isoformat(),
-            tags=tags_str,
-            links=links_str
-        )

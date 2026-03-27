@@ -37,18 +37,6 @@ class ZettelkastenConfig(BaseModel):
     )
     server_version: str = Field(default="1.2.1")
     id_date_format: str = Field(default="%Y%m%dT%H%M%S")
-    default_note_template: str = Field(
-        default=(
-            "# {title}\n\n"
-            "## Metadata\n"
-            "- Created: {created_at}\n"
-            "- Tags: {tags}\n\n"
-            "## Content\n\n"
-            "{content}\n\n"
-            "## Links\n"
-            "{links}\n"
-        )
-    )
 
     def get_absolute_path(self, path: Path) -> Path:
         """Convert a relative path to an absolute path based on base_dir."""

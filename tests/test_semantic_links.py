@@ -525,8 +525,8 @@ Test content for parsing links from markdown.
             description="Extends link"
         )
         
-        # Access the repository's _note_to_markdown function
-        markdown = zettel_service.repository._note_to_markdown(source_note)
+        # Access the repository's note_to_markdown function
+        markdown = zettel_service.repository.note_to_markdown(source_note)
         
         # Verify markdown contains the link with correct type
         assert "## Links" in markdown

@@ -142,7 +142,11 @@ def cmd_export(args):
         print(f"Note not found: {args.note_id}", file=sys.stderr)
         sys.exit(1)
 
-    print(zettel.export_note(note))
+    try:
+        print(zettel.export_note(note.id))
+    except ValueError as e:
+        print(f"Export failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_tags(args):

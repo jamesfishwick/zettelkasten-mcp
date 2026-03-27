@@ -1,4 +1,5 @@
 """Tests for the ZettelService class."""
+import frontmatter as fm
 import pytest
 from slipbox_mcp.models.schema import LinkType, NoteType
 
@@ -207,3 +208,70 @@ def test_find_similar_notes(zettel_service):
     # At least one of note2 or note3 should be in the similar notes
     # (They share tags and/or links with note1)
     assert note2.id in similar_ids or note3.id in similar_ids
+
+
+def test_export_note_returns_yaml_frontmatter(zettel_service):
+    """export_note output must contain YAML frontmatter matching the on-disk format."""
+    ref = "Ahrens, S. (2017). How to Take Smart Notes."
+    note = zettel_service.create_note(
+        title="Export Test",
+        content="Body text.",
+        note_type=NoteType.PERMANENT,
+        tags=["export", "test"],
+        references=[ref],
+    )
+    result = zettel_service.export_note(note.id)
+
+    # Parse via python-frontmatter — same library used by the repository
+    post = fm.loads(result)
+    assert post.metadata.get("id") == note.id, "id must appear in YAML frontmatter"
+    assert post.metadata.get("type") == "permanent"
+    assert set(post.metadata.get("tags", [])) == {"export", "test"}
+    assert post.metadata.get("references") == [ref]
+    assert "Export Test" in post.content
+
+
+def test_export_note_includes_links_section(zettel_service):
+    """export_note output must include the ## Links section when links exist."""
+    source = zettel_service.create_note(title="Source", content="Source body.")
+    target = zettel_service.create_note(title="Target", content="Target body.")
+    zettel_service.create_link(source.id, target.id, LinkType.SUPPORTS, "key evidence")
+
+    result = zettel_service.export_note(source.id)
+
+    assert "## Links" in result
+    assert f"supports [[{target.id}]]" in result
+    assert "key evidence" in result
+
+
+def test_export_note_raises_for_missing_id(zettel_service):
+    """export_note must raise ValueError for an unknown note ID."""
+    with pytest.raises(ValueError, match="not found"):
+        zettel_service.export_note("nonexistent-id-000000000")
+
+
+def test_export_note_round_trips(zettel_service):
+    """export_note output must parse back to a note with identical id, tags, links, and references."""
+    ref = "Ahrens, S. (2017). How to Take Smart Notes."
+    note = zettel_service.create_note(
+        title="Round-trip Test",
+        content="Body text.",
+        note_type=NoteType.PERMANENT,
+        tags=["round-trip", "test"],
+        references=[ref],
+    )
+    target = zettel_service.create_note(title="Target", content="Target body.")
+    zettel_service.create_link(note.id, target.id, LinkType.REFERENCE, "key link")
+
+    exported = zettel_service.export_note(note.id)
+
+    # Re-parse the exported content via the same parser used for on-disk files
+    parsed = zettel_service.repository._parse_note_from_markdown(exported)
+    assert parsed is not None
+    assert parsed.id == note.id
+    assert parsed.note_type == NoteType.PERMANENT
+    assert {t.name for t in parsed.tags} == {"round-trip", "test"}
+    assert parsed.references == [ref]
+    assert len(parsed.links) == 1
+    assert parsed.links[0].target_id == target.id
+    assert parsed.links[0].description == "key link"

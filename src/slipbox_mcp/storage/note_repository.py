@@ -344,7 +344,7 @@ class NoteRepository(Repository[Note]):
 
             session.commit()
 
-    def _note_to_markdown(self, note: Note) -> str:
+    def note_to_markdown(self, note: Note) -> str:
         """Convert a note to markdown with frontmatter."""
         metadata = {
             "id": note.id,
@@ -400,7 +400,7 @@ class NoteRepository(Repository[Note]):
             from slipbox_mcp.models.schema import generate_id
             note.id = generate_id()
 
-        markdown = self._note_to_markdown(note)
+        markdown = self.note_to_markdown(note)
 
         file_path = self.notes_dir / f"{note.id}.md"
         try:
@@ -453,7 +453,7 @@ class NoteRepository(Repository[Note]):
 
         note.updated_at = datetime.datetime.now()
 
-        markdown = self._note_to_markdown(note)
+        markdown = self.note_to_markdown(note)
 
         file_path = self.notes_dir / f"{note.id}.md"
         try:
