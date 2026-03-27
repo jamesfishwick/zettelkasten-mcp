@@ -1,5 +1,6 @@
 """Configuration module for the Zettelkasten MCP server."""
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
@@ -64,6 +65,5 @@ class ZettelkastenConfig(BaseModel):
 try:
     config = ZettelkastenConfig()
 except (ValueError, ValidationError) as e:
-    import sys
     print(f"Configuration error: {e}", file=sys.stderr)
     raise SystemExit(1) from e

@@ -21,6 +21,14 @@ from slipbox_mcp.storage.base import Repository
 
 logger = logging.getLogger(__name__)
 
+# Eager-load options applied to every DBNote query to avoid N+1 queries on
+# tags, outgoing links, and incoming links.
+_NOTE_EAGER_LOADS = [
+    joinedload(DBNote.tags),
+    joinedload(DBNote.outgoing_links),
+    joinedload(DBNote.incoming_links),
+]
+
 class NoteRepository(Repository[Note]):
     """Repository for note storage and retrieval.
     This implements a dual storage approach:
@@ -253,6 +261,16 @@ class NoteRepository(Repository[Note]):
             updated_at=db_note.updated_at,
         )
 
+    def _convert_db_notes(self, db_notes: List[DBNote]) -> List[Note]:
+        """Convert a list of DBNote objects to domain Notes, skipping conversion errors."""
+        notes = []
+        for db_note in db_notes:
+            try:
+                notes.append(self._db_note_to_note(db_note))
+            except Exception as e:
+                logger.error("Error converting note %s: %s", db_note.id, e)
+        return notes
+
     def _get_or_create_tag(self, session: Session, tag_name: str) -> DBTag:
         """Return the DBTag with the given name, creating it if absent.
 
@@ -420,23 +438,12 @@ class NoteRepository(Repository[Note]):
     def get_all(self) -> List[Note]:
         """Get all notes."""
         with self.session_factory() as session:
-            # Eager-loads to avoid N+1 queries.
-            query = select(DBNote).options(
-                joinedload(DBNote.tags),
-                joinedload(DBNote.outgoing_links),
-                joinedload(DBNote.incoming_links)
-            )
+            query = select(DBNote).options(*_NOTE_EAGER_LOADS)
             result = session.execute(query)
             # unique() required to collapse duplicate rows from eager loading joins
             db_notes = result.unique().scalars().all()
 
-            all_notes = []
-            for db_note in db_notes:
-                try:
-                    all_notes.append(self._db_note_to_note(db_note))
-                except Exception as e:
-                    logger.error(f"Error converting note {db_note.id}: {e}")
-            return all_notes
+            return self._convert_db_notes(db_notes)
 
     def update(self, note: Note) -> Note:
         """Update a note."""
@@ -516,11 +523,7 @@ class NoteRepository(Repository[Note]):
     def search(self, **kwargs: Any) -> List[Note]:
         """Search for notes based on criteria."""
         with self.session_factory() as session:
-            query = select(DBNote).options(
-                joinedload(DBNote.tags),
-                joinedload(DBNote.outgoing_links),
-                joinedload(DBNote.incoming_links)
-            )
+            query = select(DBNote).options(*_NOTE_EAGER_LOADS)
             if "content" in kwargs:
                 search_term = kwargs['content']
                 # Search in both content and title since content might include the title
@@ -564,13 +567,7 @@ class NoteRepository(Repository[Note]):
             # Apply unique() to handle duplicates from joins
             result = session.execute(query)
             db_notes = result.unique().scalars().all()
-        notes = []
-        for db_note in db_notes:
-            try:
-                notes.append(self._db_note_to_note(db_note))
-            except Exception as e:
-                logger.error(f"Error converting note {db_note.id}: {e}")
-        return notes
+        return self._convert_db_notes(db_notes)
 
     def find_by_tag(self, tag: Union[str, Tag]) -> List[Note]:
         """Find notes by tag."""
@@ -585,22 +582,14 @@ class NoteRepository(Repository[Note]):
                     select(DBNote)
                     .join(DBLink, DBNote.id == DBLink.target_id)
                     .where(DBLink.source_id == note_id)
-                    .options(
-                        joinedload(DBNote.tags),
-                        joinedload(DBNote.outgoing_links),
-                        joinedload(DBNote.incoming_links)
-                    )
+                    .options(*_NOTE_EAGER_LOADS)
                 )
             elif direction == "incoming":
                 query = (
                     select(DBNote)
                     .join(DBLink, DBNote.id == DBLink.source_id)
                     .where(DBLink.target_id == note_id)
-                    .options(
-                        joinedload(DBNote.tags),
-                        joinedload(DBNote.outgoing_links),
-                        joinedload(DBNote.incoming_links)
-                    )
+                    .options(*_NOTE_EAGER_LOADS)
                 )
             elif direction == "both":
                 query = (
@@ -612,11 +601,7 @@ class NoteRepository(Repository[Note]):
                             and_(DBNote.id == DBLink.source_id, DBLink.target_id == note_id)
                         )
                     )
-                    .options(
-                        joinedload(DBNote.tags),
-                        joinedload(DBNote.outgoing_links),
-                        joinedload(DBNote.incoming_links)
-                    )
+                    .options(*_NOTE_EAGER_LOADS)
                 )
             else:
                 raise ValueError(f"Invalid direction: {direction}. Use 'outgoing', 'incoming', or 'both'")
@@ -624,13 +609,7 @@ class NoteRepository(Repository[Note]):
             result = session.execute(query)
             # unique() required to collapse duplicate rows from eager loading joins
             db_notes = result.unique().scalars().all()
-            notes = []
-            for db_note in db_notes:
-                try:
-                    notes.append(self._db_note_to_note(db_note))
-                except Exception as e:
-                    logger.error(f"Error converting note {db_note.id}: {e}")
-            return notes
+            return self._convert_db_notes(db_notes)
 
     def get_all_tags(self) -> List[Tag]:
         """Get all tags in the system."""

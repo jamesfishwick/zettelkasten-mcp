@@ -1,253 +1,276 @@
 """Tests for the NoteRepository class."""
 import pytest
 from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
+from helpers import make_note
 
-def test_create_note(note_repository):
-    """Test creating a new note."""
-    # Create a test note
-    note = Note(
-        title="Test Note",
-        content="This is a test note.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="test"), Tag(name="example")]
-    )
-    # Save to repository
-    saved_note = note_repository.create(note)
-    # Verify note was saved with an ID
-    assert saved_note.id is not None
-    assert saved_note.title == "Test Note"
-    assert saved_note.content == "This is a test note."
-    assert saved_note.note_type == NoteType.PERMANENT
-    assert len(saved_note.tags) == 2
-    assert {tag.name for tag in saved_note.tags} == {"test", "example"}
+# Named reference strings used across multiple tests
+LUHMANN_REF = "Luhmann, N. (1992). Communicating with Slip Boxes."
+AHRENS_REF = "Ahrens, S. (2017). How to Take Smart Notes."
+ECO_REF = "Eco, U. (1977). How to Write a Thesis."
 
-def test_get_note(note_repository):
-    """Test retrieving a note."""
-    # Create a test note
-    note = Note(
-        title="Get Test Note",
-        content="This is a test note for retrieval.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="test"), Tag(name="get")]
-    )
-    # Save to repository
-    saved_note = note_repository.create(note)
-    # Retrieve the note
-    retrieved_note = note_repository.get(saved_note.id)
-    # Verify note was retrieved correctly
-    assert retrieved_note is not None
-    assert retrieved_note.id == saved_note.id
-    assert retrieved_note.title == "Get Test Note"
-    # Note content includes the title as a markdown header - account for this in our test
-    expected_content = f"# {note.title}\n\n{note.content}"
-    assert retrieved_note.content.strip() == expected_content.strip()
-    assert retrieved_note.note_type == NoteType.PERMANENT
-    assert len(retrieved_note.tags) == 2
-    assert {tag.name for tag in retrieved_note.tags} == {"test", "get"}
+# External note ID format used in rebuild-index tests
+EXTERNAL_NOTE_ID = "20260101T120000000000000"
 
-def test_update_note(note_repository):
-    """Test updating a note."""
-    # Create a test note
-    note = Note(
-        title="Update Test Note",
-        content="This is a test note for updating.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="test"), Tag(name="update")]
-    )
-    # Save to repository
-    saved_note = note_repository.create(note)
-    # Update the note
-    saved_note.title = "Updated Test Note"
-    saved_note.content = "This note has been updated."
-    saved_note.tags = [Tag(name="test"), Tag(name="updated")]
-    # Save the update
-    updated_note = note_repository.update(saved_note)
-    # Retrieve the note again
-    retrieved_note = note_repository.get(saved_note.id)
-    # Verify note was updated
-    assert retrieved_note is not None
-    assert retrieved_note.id == saved_note.id
-    assert retrieved_note.title == "Updated Test Note"
-    # Note content includes the title as a markdown header - account for this
-    expected_content = f"# {updated_note.title}\n\n{updated_note.content}"
-    assert retrieved_note.content.strip() == expected_content.strip()
-    assert {tag.name for tag in retrieved_note.tags} == {"test", "updated"}
 
-def test_delete_note(note_repository):
-    """Test deleting a note."""
-    # Create a test note
-    note = Note(
-        title="Delete Test Note",
-        content="This is a test note for deletion.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="test"), Tag(name="delete")]
-    )
-    # Save to repository
-    saved_note = note_repository.create(note)
-    # Verify note exists
-    retrieved_note = note_repository.get(saved_note.id)
-    assert retrieved_note is not None
-    # Delete the note
-    note_repository.delete(saved_note.id)
-    # Verify note no longer exists
-    deleted_note = note_repository.get(saved_note.id)
-    assert deleted_note is None
+# ---------------------------------------------------------------------------
+# CRUD
+# ---------------------------------------------------------------------------
 
-def test_search_notes(note_repository):
-    """Test searching for notes."""
-    # Create test notes
-    note1 = Note(
-        title="Python Programming",
-        content="Python is a versatile programming language.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="python"), Tag(name="programming")]
+def test_create_note_returns_note_with_id_and_all_fields(note_repository):
+    """create() persists a note and returns it with a generated ID and all fields intact."""
+    # Arrange
+    note = make_note(title="Test Note", content="This is a test note.", tags=["test", "example"])
+
+    # Act
+    saved = note_repository.create(note)
+
+    # Assert — identity
+    assert saved.id is not None, "Expected a generated note ID"
+    assert saved.title == "Test Note"
+    assert saved.content == "This is a test note."
+    assert saved.note_type == NoteType.PERMANENT
+    # Assert — tags (order-independent)
+    assert {tag.name for tag in saved.tags} == {"test", "example"}, (
+        f"Expected tags {{'test', 'example'}}, got {{{', '.join(t.name for t in saved.tags)}}}"
     )
-    note2 = Note(
-        title="JavaScript Basics",
-        content="JavaScript is used for web development.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="javascript"), Tag(name="programming")]
+
+
+def test_get_note_returns_file_content_with_title_header(note_repository):
+    """get() reads from disk; returned content includes the auto-prepended title heading."""
+    # Arrange
+    note = make_note(title="Get Test Note", content="Body text.", tags=["test", "get"])
+    saved = note_repository.create(note)
+    EXPECTED_CONTENT = f"# {note.title}\n\n{note.content}"
+
+    # Act
+    retrieved = note_repository.get(saved.id)
+
+    # Assert
+    assert retrieved is not None, f"Note {saved.id} was not found after creation"
+    assert retrieved.id == saved.id
+    assert retrieved.title == "Get Test Note"
+    assert retrieved.content.strip() == EXPECTED_CONTENT.strip(), (
+        "get() should prepend a '# Title' heading to content"
     )
-    note3 = Note(
-        title="Data Science Overview",
-        content="Data science uses Python for data analysis.",
-        note_type=NoteType.STRUCTURE,
-        tags=[Tag(name="data science"), Tag(name="python")]
+    assert {tag.name for tag in retrieved.tags} == {"test", "get"}
+
+
+def test_update_note_persists_new_title_content_and_tags(note_repository):
+    """update() writes new values; subsequent get() reflects all changes."""
+    # Arrange
+    saved = note_repository.create(make_note(title="Original", content="Original body.", tags=["old"]))
+    saved.title = "Updated Title"
+    saved.content = "Updated body."
+    saved.tags = [Tag(name="new")]
+
+    # Act
+    updated = note_repository.update(saved)
+    EXPECTED_CONTENT = f"# {updated.title}\n\n{updated.content}"
+
+    # Assert — via round-trip read
+    retrieved = note_repository.get(saved.id)
+    assert retrieved is not None
+    assert retrieved.title == "Updated Title"
+    assert retrieved.content.strip() == EXPECTED_CONTENT.strip()
+    assert {tag.name for tag in retrieved.tags} == {"new"}
+
+
+def test_delete_note_removes_from_repository(note_repository):
+    """delete() removes the note; subsequent get() returns None."""
+    # Arrange
+    saved = note_repository.create(make_note(title="Delete Me"))
+
+    # Act — verify existence before deletion
+    assert note_repository.get(saved.id) is not None, "Note should exist before deletion"
+    note_repository.delete(saved.id)
+
+    # Assert
+    assert note_repository.get(saved.id) is None, f"Note {saved.id} should be gone after delete()"
+
+
+# ---------------------------------------------------------------------------
+# Search
+# ---------------------------------------------------------------------------
+
+def test_search_by_content_finds_matching_notes(note_repository):
+    """search(content=...) returns notes whose title or content matches."""
+    # Arrange
+    python = note_repository.create(make_note(title="Python Programming", content="Python is versatile.", tags=["python"]))
+    data_sci = note_repository.create(make_note(title="Data Science", content="Data science uses Python.", tags=["python"]))
+    js = note_repository.create(make_note(title="JavaScript Basics", content="JavaScript for web.", tags=["javascript"]))
+
+    # Act
+    results = note_repository.search(content="Python")
+
+    # Assert — both Python notes present, JS note absent
+    result_ids = {n.id for n in results}
+    assert python.id in result_ids, "Python Programming note should match content='Python'"
+    assert data_sci.id in result_ids, "Data Science note should match content='Python'"
+    assert js.id not in result_ids, "JavaScript note should not match content='Python'"
+
+
+def test_search_by_title_finds_exact_title_match(note_repository):
+    """search(title=...) returns notes whose title contains the substring."""
+    # Arrange
+    note_repository.create(make_note(title="Python Programming", tags=["python"]))
+    js = note_repository.create(make_note(title="JavaScript Basics", tags=["javascript"]))
+    note_repository.create(make_note(title="Data Science", tags=["data"]))
+
+    # Act
+    results = note_repository.search(title="JavaScript")
+
+    # Assert
+    assert len(results) == 1, f"Expected 1 result, got {len(results)}: {[n.title for n in results]}"
+    assert results[0].id == js.id
+
+
+def test_search_by_note_type_filters_correctly(note_repository):
+    """search(note_type=...) returns only notes of that type."""
+    # Arrange
+    note_repository.create(make_note(title="Permanent Note", note_type=NoteType.PERMANENT))
+    structure = note_repository.create(make_note(title="Structure Note", note_type=NoteType.STRUCTURE))
+
+    # Act
+    results = note_repository.search(note_type=NoteType.STRUCTURE)
+
+    # Assert
+    assert len(results) == 1, f"Expected 1 STRUCTURE note, got {len(results)}"
+    assert results[0].id == structure.id
+
+
+def test_find_by_tag_returns_all_tagged_notes(note_repository):
+    """find_by_tag() returns every note carrying that tag, no more."""
+    # Arrange
+    python = note_repository.create(make_note(title="Python", tags=["python", "programming"]))
+    js = note_repository.create(make_note(title="JavaScript", tags=["javascript", "programming"]))
+    note_repository.create(make_note(title="Data Science", tags=["data"]))
+
+    # Act
+    results = note_repository.find_by_tag("programming")
+
+    # Assert
+    assert {n.id for n in results} == {python.id, js.id}, (
+        f"Expected exactly python+js notes, got: {[n.title for n in results]}"
     )
-    # Save notes
-    saved_note1 = note_repository.create(note1)
-    saved_note2 = note_repository.create(note2)
-    saved_note3 = note_repository.create(note3)
-    
-    # Search by content with title included (since content has the title prepended)
-    python_notes = note_repository.search(content="Python")
-    # We should find both the Python notes even with title prepended
-    assert len(python_notes) >= 1  # At least one match
-    python_ids = {note.id for note in python_notes}
-    assert saved_note1.id in python_ids or saved_note3.id in python_ids
-    
-    # Search by title
-    javascript_notes = note_repository.search(title="JavaScript")
-    assert len(javascript_notes) == 1
-    assert javascript_notes[0].id == saved_note2.id
-    
-    # Search by note_type
-    structure_notes = note_repository.search(note_type=NoteType.STRUCTURE)
-    assert len(structure_notes) == 1
-    assert structure_notes[0].id == saved_note3.id
-    
-    # Search by tag
-    programming_notes = note_repository.find_by_tag("programming")
-    assert len(programming_notes) == 2
-    assert {note.id for note in programming_notes} == {saved_note1.id, saved_note2.id}
+
+
+# ---------------------------------------------------------------------------
+# References persistence
+# ---------------------------------------------------------------------------
 
 def test_references_survive_get_all(note_repository):
-    """References are preserved through the DB bulk-read path (get_all -> _db_note_to_note)."""
-    note = Note(
-        title="References Bulk Note",
-        content="body",
-        references=["Luhmann, N. (1992). Communicating with Slip Boxes."]
-    )
-    created = note_repository.create(note)
+    """References are preserved through the bulk DB read path (get_all → _db_note_to_note)."""
+    # Arrange
+    created = note_repository.create(make_note(title="Bulk Ref Note", references=[LUHMANN_REF]))
 
+    # Act
     all_notes = note_repository.get_all()
-
     match = next((n for n in all_notes if n.id == created.id), None)
-    assert match is not None
-    assert match.references == ["Luhmann, N. (1992). Communicating with Slip Boxes."]
+
+    # Assert
+    assert match is not None, f"Note {created.id} missing from get_all()"
+    assert match.references == [LUHMANN_REF], (
+        f"Expected [{LUHMANN_REF!r}], got {match.references!r}"
+    )
 
 
 def test_references_survive_search(note_repository):
-    """References are preserved through the DB search path (search -> _db_note_to_note)."""
-    note = Note(
-        title="References Search Note",
-        content="body",
-        references=["Ahrens, S. (2017). How to Take Smart Notes."]
-    )
-    note_repository.create(note)
+    """References are preserved through the DB search path (search → _db_note_to_note)."""
+    # Arrange
+    note_repository.create(make_note(title="Search Ref Note", references=[AHRENS_REF]))
 
-    results = note_repository.search(title="References Search Note")
+    # Act
+    results = note_repository.search(title="Search Ref Note")
 
+    # Assert
     assert len(results) == 1
-    assert results[0].references == ["Ahrens, S. (2017). How to Take Smart Notes."]
+    assert results[0].references == [AHRENS_REF], (
+        f"Expected [{AHRENS_REF!r}], got {results[0].references!r}"
+    )
 
 
 def test_references_survive_update(note_repository):
-    """References written via update are returned correctly by subsequent bulk reads."""
-    note = Note(title="Update Ref Note", content="body", references=[])
-    created = note_repository.create(note)
+    """References written via update() are returned correctly by subsequent searches."""
+    # Arrange
+    created = note_repository.create(make_note(title="Update Ref Note", references=[]))
 
-    created.references = ["Eco, U. (1977). How to Write a Thesis."]
+    # Act
+    created.references = [ECO_REF]
     note_repository.update(created)
-
     results = note_repository.search(title="Update Ref Note")
+
+    # Assert
     assert len(results) == 1
-    assert results[0].references == ["Eco, U. (1977). How to Write a Thesis."]
+    assert results[0].references == [ECO_REF], (
+        f"Expected [{ECO_REF!r}] after update, got {results[0].references!r}"
+    )
 
 
-def test_rebuild_index_if_needed_no_rebuild_when_in_sync(note_repository):
-    """No rebuild is triggered when the DB count matches indexable file count."""
+# ---------------------------------------------------------------------------
+# Rebuild-index heuristic
+# ---------------------------------------------------------------------------
+
+def test_rebuild_index_not_triggered_when_db_is_in_sync(note_repository):
+    """No rebuild fires when the DB count matches the indexable file count."""
     from unittest.mock import patch
-    note_repository.create(Note(title="Sync Note", content="body", note_type=NoteType.PERMANENT))
+    note_repository.create(make_note(title="Sync Note"))
+
     with patch.object(note_repository, "rebuild_index") as mock_rebuild:
         note_repository.rebuild_index_if_needed()
-        mock_rebuild.assert_not_called()
+
+    mock_rebuild.assert_not_called()
 
 
-def test_rebuild_index_if_needed_triggers_on_new_valid_file(note_repository):
-    """A rebuild fires when a new valid (id-bearing) file appears outside the repo."""
+def test_rebuild_index_triggered_when_valid_external_file_appears(note_repository):
+    """A rebuild fires when a new id-bearing markdown file exists outside the repo."""
     from unittest.mock import patch
-    note_repository.create(Note(title="Existing", content="body", note_type=NoteType.PERMANENT))
-    external = note_repository.notes_dir / "20260101T120000000000000.md"
-    external.write_text("---\nid: 20260101T120000000000000\ntitle: External\n---\nbody\n")
+    note_repository.create(make_note(title="Existing Note"))
+    external = note_repository.notes_dir / f"{EXTERNAL_NOTE_ID}.md"
+    external.write_text(
+        f"---\nid: {EXTERNAL_NOTE_ID}\ntitle: External\n---\nbody\n"
+    )
+
     with patch.object(note_repository, "rebuild_index") as mock_rebuild:
         note_repository.rebuild_index_if_needed()
-        mock_rebuild.assert_called_once()
+
+    mock_rebuild.assert_called_once()
 
 
-def test_rebuild_index_if_needed_ignores_files_without_id(note_repository):
-    """Non-note .md files (no frontmatter id) do not trigger a spurious rebuild."""
+def test_rebuild_index_not_triggered_for_files_without_frontmatter_id(note_repository):
+    """Non-note .md files (no frontmatter id) do not cause a spurious rebuild."""
     from unittest.mock import patch
-    note_repository.create(Note(title="Valid", content="body", note_type=NoteType.PERMANENT))
+    note_repository.create(make_note(title="Valid Note"))
     readme = note_repository.notes_dir / "README.md"
     readme.write_text("# README\n\nNo frontmatter id here.\n")
+
     with patch.object(note_repository, "rebuild_index") as mock_rebuild:
         note_repository.rebuild_index_if_needed()
-        mock_rebuild.assert_not_called()
+
+    mock_rebuild.assert_not_called()
 
 
-def test_note_linking(note_repository):
-    """Test creating links between notes."""
-    # Create test notes
-    note1 = Note(
-        title="Source Note",
-        content="This is the source note.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="test"), Tag(name="source")]
-    )
-    note2 = Note(
-        title="Target Note",
-        content="This is the target note.",
-        note_type=NoteType.PERMANENT,
-        tags=[Tag(name="test"), Tag(name="target")]
-    )
-    # Save notes
-    source_note = note_repository.create(note1)
-    target_note = note_repository.create(note2)
-    # Add a link from source to target
-    source_note.add_link(
-        target_id=target_note.id,
-        link_type=LinkType.REFERENCE,
-        description="A test link"
-    )
-    # Update the source note
-    updated_source = note_repository.update(source_note)
-    # Verify link was created
-    assert len(updated_source.links) == 1
-    assert updated_source.links[0].target_id == target_note.id
-    assert updated_source.links[0].link_type == LinkType.REFERENCE
-    assert updated_source.links[0].description == "A test link"
-    # Find linked notes
-    linked_notes = note_repository.find_linked_notes(source_note.id, "outgoing")
-    assert len(linked_notes) == 1
-    assert linked_notes[0].id == target_note.id
+# ---------------------------------------------------------------------------
+# Linking
+# ---------------------------------------------------------------------------
+
+def test_create_link_between_notes_is_persisted(note_repository):
+    """add_link() + update() creates a retrievable outgoing link on the source note."""
+    # Arrange
+    source = note_repository.create(make_note(title="Source Note", tags=["source"]))
+    target = note_repository.create(make_note(title="Target Note", tags=["target"]))
+
+    # Act
+    source.add_link(target_id=target.id, link_type=LinkType.REFERENCE, description="A test link")
+    updated = note_repository.update(source)
+
+    # Assert — link on returned note
+    assert len(updated.links) == 1
+    link = updated.links[0]
+    assert link.target_id == target.id
+    assert link.link_type == LinkType.REFERENCE
+    assert link.description == "A test link"
+
+    # Assert — link survives a fresh read
+    linked = note_repository.find_linked_notes(source.id, "outgoing")
+    assert len(linked) == 1, f"Expected 1 outgoing note, got {len(linked)}"
+    assert linked[0].id == target.id

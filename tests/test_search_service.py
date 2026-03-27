@@ -1,299 +1,221 @@
-# tests/test_search_service.py
-"""Tests for the search service in the Zettelkasten MCP server."""
-import datetime
+"""Tests for SearchService."""
 import pytest
-from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
-from slipbox_mcp.services.search_service import SearchResult, SearchService
+from slipbox_mcp.models.schema import LinkType, NoteType
+from slipbox_mcp.services.search_service import SearchService
 
 
-class TestSearchService:
-    """Tests for the SearchService class."""
-    
-    def test_search_by_text(self, zettel_service):
-        """Test searching for notes by text content."""
-        # Create test notes
-        note1 = zettel_service.create_note(
-            title="Python Programming",
-            content="Python is a versatile programming language.",
-            tags=["python", "programming"]
-        )
-        note2 = zettel_service.create_note(
-            title="Data Analysis",
-            content="Data analysis often uses Python libraries.",
-            tags=["data", "analysis", "python"]
-        )
-        note3 = zettel_service.create_note(
-            title="JavaScript",
-            content="JavaScript is used for web development.",
-            tags=["javascript", "web"]
-        )
-        
-        # Create search service
-        search_service = SearchService(zettel_service)
-        
-        # Test tag search instead which is more reliable
-        python_results = zettel_service.get_notes_by_tag("python")
-        assert len(python_results) == 2
-        python_ids = {note.id for note in python_results}
-        assert note1.id in python_ids
-        assert note2.id in python_ids
+# Convenience wrapper: creates a note through the service using keyword args.
+# This keeps test arrange-sections readable without repeating boilerplate.
+def _note(zettel_service, title, tags=None, note_type=NoteType.PERMANENT, content="Body."):
+    return zettel_service.create_note(
+        title=title,
+        content=content,
+        note_type=note_type,
+        tags=tags or [],
+    )
 
-    def test_search_by_tag(self, zettel_service):
-        """Test searching for notes by tags."""
-        # Create test notes
-        note1 = zettel_service.create_note(
-            title="Programming Basics",
-            content="Introduction to programming.",
-            tags=["programming", "basics"]
-        )
-        note2 = zettel_service.create_note(
-            title="Python Basics",
-            content="Introduction to Python.",
-            tags=["python", "programming", "basics"]
-        )
-        note3 = zettel_service.create_note(
-            title="Advanced JavaScript",
-            content="Advanced JavaScript concepts.",
-            tags=["javascript", "advanced"]
-        )
-        
-        # Create search service
-        search_service = SearchService(zettel_service)
-        
-        # Search by a single tag directly through zettel_service
-        programming_notes = zettel_service.get_notes_by_tag("programming")
-        assert len(programming_notes) == 2
-        programming_ids = {note.id for note in programming_notes}
-        assert note1.id in programming_ids
-        assert note2.id in programming_ids
 
-    def test_search_by_link(self, zettel_service):
-        """Test searching for notes by links."""
-        # Create test notes
-        note1 = zettel_service.create_note(
-            title="Source Note",
-            content="This links to other notes.",
-            tags=["source"]
-        )
-        note2 = zettel_service.create_note(
-            title="Target Note 1",
-            content="This is linked from the source.",
-            tags=["target"]
-        )
-        note3 = zettel_service.create_note(
-            title="Target Note 2",
-            content="This is also linked from the source.",
-            tags=["target"]
-        )
-        note4 = zettel_service.create_note(
-            title="Unrelated Note",
-            content="This isn't linked to anything.",
-            tags=["unrelated"]
-        )
-        
-        # Create links with different link types to avoid uniqueness constraint
-        zettel_service.create_link(note1.id, note2.id, LinkType.REFERENCE)
-        zettel_service.create_link(note1.id, note3.id, LinkType.EXTENDS)
-        zettel_service.create_link(note2.id, note3.id, LinkType.SUPPORTS)  # Changed link type
-        
-        # Create search service
-        search_service = SearchService(zettel_service)
-        
-        # Search outgoing links directly through zettel_service
-        outgoing_links = zettel_service.get_linked_notes(note1.id, "outgoing")
-        assert len(outgoing_links) == 2
-        outgoing_ids = {note.id for note in outgoing_links}
-        assert note2.id in outgoing_ids
-        assert note3.id in outgoing_ids
+# ---------------------------------------------------------------------------
+# Tag search
+# ---------------------------------------------------------------------------
 
-        # Search incoming links
-        incoming_links = zettel_service.get_linked_notes(note3.id, "incoming")
-        assert len(incoming_links) >= 1  # At least one incoming link
-        
-        # Search both directions
-        both_links = zettel_service.get_linked_notes(note2.id, "both")
-        assert len(both_links) >= 1  # At least one link
+class TestSearchByTag:
+    """search_by_tag() — single string and list variants."""
 
-    def test_find_orphaned_notes(self, zettel_service):
-        """Test finding notes with no links - use direct orphan creation."""
-        # Create a single orphaned note
-        orphan = zettel_service.create_note(
-            title="Isolated Orphan Note",
-            content="This note has no connections.",
-            tags=["orphan", "isolated"]
-        )
-        
-        # Create two connected notes
-        note1 = zettel_service.create_note(
-            title="Connected Note 1",
-            content="This note has connections.",
-            tags=["connected"]
-        )
-        note2 = zettel_service.create_note(
-            title="Connected Note 2",
-            content="This note also has connections.",
-            tags=["connected"]
-        )
-        
-        # Link the connected notes
-        zettel_service.create_link(note1.id, note2.id)
-        
-        # Use direct SQL query instead of search service
-        orphans = zettel_service.repository.search(tags=["isolated"])
-        assert len(orphans) == 1
-        assert orphans[0].id == orphan.id
+    def test_single_tag_returns_matching_notes(self, zettel_service, search_service):
+        """search_by_tag(str) finds every note carrying that tag."""
+        # Arrange
+        note1 = _note(zettel_service, "Programming Basics", tags=["programming", "basics"])
+        note2 = _note(zettel_service, "Python Basics", tags=["python", "programming", "basics"])
+        _note(zettel_service, "Advanced JavaScript", tags=["javascript", "advanced"])
 
-    def test_find_central_notes(self, zettel_service):
-        """Test finding notes with the most connections."""
-        # Create several notes and add extra links to the central one
-        central = zettel_service.create_note(
-            title="Central Hub Note",
-            content="This is the central hub note.",
-            tags=["central", "hub"]
-        )
-        
-        peripheral1 = zettel_service.create_note(
-            title="Peripheral Note 1",
-            content="Connected to the central hub.",
-            tags=["peripheral"]
-        )
-        
-        peripheral2 = zettel_service.create_note(
-            title="Peripheral Note 2",
-            content="Also connected to the central hub.",
-            tags=["peripheral"]
-        )
-        
-        # Create links with different types to avoid constraint issues
-        zettel_service.create_link(central.id, peripheral1.id, LinkType.REFERENCE)
-        zettel_service.create_link(central.id, peripheral2.id, LinkType.SUPPORTS)
-        
-        # Verify we can find linked notes
-        linked = zettel_service.get_linked_notes(central.id, "outgoing")
-        assert len(linked) == 2
-        assert {n.id for n in linked} == {peripheral1.id, peripheral2.id}
+        # Act
+        results = search_service.search_by_tag("programming")
 
-    def test_find_notes_by_date_range(self, zettel_service):
-        """Test finding notes within a date range."""
-        # Create a note and ensure we can retrieve it by tag
-        note = zettel_service.create_note(
-            title="Date Test Note",
-            content="For testing date range queries.",
-            tags=["date-test", "search"]
-        )
-        
-        # Test retrieving by tag
-        found_notes = zettel_service.get_notes_by_tag("date-test")
-        assert len(found_notes) == 1
-        assert found_notes[0].id == note.id
+        # Assert
+        result_ids = {n.id for n in results}
+        assert note1.id in result_ids, "Programming Basics should match tag 'programming'"
+        assert note2.id in result_ids, "Python Basics should match tag 'programming'"
 
-    def test_find_similar_notes(self, zettel_service):
-        """Test finding notes similar to a given note."""
-        # Create test notes with shared tags
-        note1 = zettel_service.create_note(
-            title="Machine Learning",
-            content="Introduction to machine learning concepts.",
-            tags=["AI", "machine learning", "data science"]
-        )
-        note2 = zettel_service.create_note(
-            title="Neural Networks",
-            content="Overview of neural network architectures.",
-            tags=["AI", "machine learning", "neural networks"]
-        )
-        
-        # Create link to ensure similarity
-        zettel_service.create_link(note1.id, note2.id)
-        
-        # Verify we can find the note by tag
-        ai_notes = zettel_service.get_notes_by_tag("AI")
-        assert len(ai_notes) == 2
-        assert {n.id for n in ai_notes} == {note1.id, note2.id}
+    def test_tag_list_returns_union_of_matches(self, zettel_service, search_service):
+        """search_by_tag(list) returns notes matching any of the tags (OR semantics)."""
+        # Arrange
+        note_a = _note(zettel_service, "Alpha", tags=["alpha"])
+        note_b = _note(zettel_service, "Beta", tags=["beta"])
+        note_c = _note(zettel_service, "Gamma", tags=["gamma"])
 
-    def test_search_combined(self, zettel_service):
-        """Test combined search with multiple criteria."""
-        # Create test notes
-        note1 = zettel_service.create_note(
-            title="Python Data Analysis",
-            content="Using Python for data analysis.",
-            note_type=NoteType.PERMANENT,
-            tags=["python", "data science", "analysis"]
-        )
-        note2 = zettel_service.create_note(
-            title="Python Web Development",
-            content="Using Python for web development.",
-            note_type=NoteType.PERMANENT,
-            tags=["python", "web", "development"]
-        )
-
-        # Test tag-based search
-        python_notes = zettel_service.get_notes_by_tag("python")
-        assert len(python_notes) == 2
-        assert {n.id for n in python_notes} == {note1.id, note2.id}
-
-        # Test tag and type filtering
-        permanent_notes = zettel_service.repository.search(
-            note_type=NoteType.PERMANENT,
-            tags=["python"]
-        )
-        assert len(permanent_notes) == 2
-
-    def test_search_by_tag_list_returns_union(self, zettel_service):
-        """search_by_tag with a list returns notes matching any of the tags (OR semantics)."""
-        search_service = SearchService(zettel_service)
-        note_a = zettel_service.create_note(title="Alpha", content="body", tags=["alpha"])
-        note_b = zettel_service.create_note(title="Beta", content="body", tags=["beta"])
-        note_c = zettel_service.create_note(title="Gamma", content="body", tags=["gamma"])
-
+        # Act
         results = search_service.search_by_tag(["alpha", "beta"])
 
+        # Assert
         ids = {n.id for n in results}
-        assert note_a.id in ids
-        assert note_b.id in ids
-        assert note_c.id not in ids
+        assert note_a.id in ids, "Alpha note should be in results (matched 'alpha')"
+        assert note_b.id in ids, "Beta note should be in results (matched 'beta')"
+        assert note_c.id not in ids, "Gamma note should not appear (unmatched tag)"
 
-    def test_search_by_tag_list_no_duplicates(self, zettel_service):
+    def test_tag_list_does_not_return_duplicates(self, zettel_service, search_service):
         """A note tagged with two searched tags must not appear twice in results."""
-        search_service = SearchService(zettel_service)
-        note = zettel_service.create_note(
-            title="Multi Tag", content="body", tags=["alpha", "beta"]
-        )
+        # Arrange
+        note = _note(zettel_service, "Multi Tag", tags=["alpha", "beta"])
 
+        # Act
         results = search_service.search_by_tag(["alpha", "beta"])
 
-        assert [n.id for n in results].count(note.id) == 1
+        # Assert
+        appearances = [n.id for n in results].count(note.id)
+        assert appearances == 1, f"Note appeared {appearances} times; expected exactly 1"
 
-    def test_search_by_tag_string_delegates_correctly(self, zettel_service):
-        """search_by_tag with a plain string (single-tag path) still works."""
-        search_service = SearchService(zettel_service)
-        note = zettel_service.create_note(title="Solo Tag", content="body", tags=["solo"])
+    def test_string_path_delegates_correctly(self, zettel_service, search_service):
+        """search_by_tag(str) reaches the single-tag code path."""
+        # Arrange
+        note = _note(zettel_service, "Solo Tag", tags=["solo"])
 
+        # Act
         results = search_service.search_by_tag("solo")
 
-        assert any(n.id == note.id for n in results)
+        # Assert
+        assert any(n.id == note.id for n in results), "Solo-tagged note should appear in results"
 
-    def test_find_central_notes_returns_in_rank_order(self, zettel_service):
-        """find_central_notes returns notes ordered by total connections descending."""
-        search_service = SearchService(zettel_service)
-        hub = zettel_service.create_note(title="Hub", content="body", tags=[])
-        spoke1 = zettel_service.create_note(title="Spoke1", content="body", tags=[])
-        spoke2 = zettel_service.create_note(title="Spoke2", content="body", tags=[])
-        spoke3 = zettel_service.create_note(title="Spoke3", content="body", tags=[])
 
+# ---------------------------------------------------------------------------
+# Link-based search
+# ---------------------------------------------------------------------------
+
+class TestSearchByLink:
+    """get_linked_notes() — outgoing, incoming, and both directions."""
+
+    def test_outgoing_links_returns_targets(self, zettel_service):
+        """Outgoing search returns the two notes the source links to."""
+        # Arrange
+        source = _note(zettel_service, "Source")
+        target1 = _note(zettel_service, "Target 1")
+        target2 = _note(zettel_service, "Target 2")
+        _note(zettel_service, "Unrelated")
+        zettel_service.create_link(source.id, target1.id, LinkType.REFERENCE)
+        zettel_service.create_link(source.id, target2.id, LinkType.EXTENDS)
+
+        # Act
+        results = zettel_service.get_linked_notes(source.id, "outgoing")
+
+        # Assert
+        result_ids = {n.id for n in results}
+        assert result_ids == {target1.id, target2.id}, (
+            f"Expected exactly {{target1, target2}}, got {result_ids}"
+        )
+
+    def test_incoming_links_returns_sources(self, zettel_service):
+        """Incoming search on a target returns both notes that link to it."""
+        # Arrange
+        src1 = _note(zettel_service, "Source 1")
+        src2 = _note(zettel_service, "Source 2")
+        target = _note(zettel_service, "Common Target")
+        zettel_service.create_link(src1.id, target.id, LinkType.REFERENCE)
+        zettel_service.create_link(src2.id, target.id, LinkType.SUPPORTS)
+
+        # Act
+        results = zettel_service.get_linked_notes(target.id, "incoming")
+
+        # Assert
+        result_ids = {n.id for n in results}
+        assert result_ids == {src1.id, src2.id}, (
+            f"Expected {{src1, src2}} for incoming, got {result_ids}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Orphan detection
+# ---------------------------------------------------------------------------
+
+class TestFindOrphanedNotes:
+    """find_orphaned_notes() returns notes with no link in either direction."""
+
+    def test_linked_notes_are_excluded_from_orphans(self, zettel_service, search_service):
+        """Only the isolated note appears in orphan results; linked notes are excluded."""
+        # Arrange
+        orphan = _note(zettel_service, "Isolated Orphan", tags=["orphan"])
+        connected1 = _note(zettel_service, "Connected 1")
+        connected2 = _note(zettel_service, "Connected 2")
+        zettel_service.create_link(connected1.id, connected2.id)
+
+        # Act
+        orphans = search_service.find_orphaned_notes()
+
+        # Assert
+        orphan_ids = {n.id for n in orphans}
+        assert orphan.id in orphan_ids, "Isolated note should appear in orphan results"
+        assert connected1.id not in orphan_ids, "connected1 has outgoing link, should not be orphan"
+        assert connected2.id not in orphan_ids, "connected2 has incoming link, should not be orphan"
+
+
+# ---------------------------------------------------------------------------
+# Central notes ranking
+# ---------------------------------------------------------------------------
+
+class TestFindCentralNotes:
+    """find_central_notes() orders notes by total connection count."""
+
+    def test_most_connected_note_ranks_first(self, zettel_service, search_service):
+        """Hub with 3 links ranks above spokes with 1 link each."""
+        # Arrange
+        hub = _note(zettel_service, "Hub")
+        spoke1 = _note(zettel_service, "Spoke 1")
+        spoke2 = _note(zettel_service, "Spoke 2")
+        spoke3 = _note(zettel_service, "Spoke 3")
         zettel_service.create_link(hub.id, spoke1.id, LinkType.REFERENCE)
         zettel_service.create_link(hub.id, spoke2.id, LinkType.EXTENDS)
         zettel_service.create_link(hub.id, spoke3.id, LinkType.SUPPORTS)
 
+        # Act
         results = search_service.find_central_notes(limit=10)
 
+        # Assert
         assert len(results) >= 1
-        assert results[0][0].id == hub.id
-        assert results[0][1] == 3
+        assert results[0][0].id == hub.id, "Hub should rank first with most connections"
+        assert results[0][1] == 3, f"Hub should have connection count 3, got {results[0][1]}"
 
-    def test_find_central_notes_empty_when_no_links(self, zettel_service):
-        """find_central_notes returns empty list when no notes have links."""
-        search_service = SearchService(zettel_service)
-        zettel_service.create_note(title="Isolated", content="body", tags=[])
+    def test_returns_empty_when_no_notes_have_links(self, zettel_service, search_service):
+        """find_central_notes returns [] when no note has any link."""
+        # Arrange
+        _note(zettel_service, "Isolated")
 
-        results = search_service.find_central_notes()
+        # Act / Assert
+        assert search_service.find_central_notes() == []
 
-        assert results == []
+
+# ---------------------------------------------------------------------------
+# Combined search
+# ---------------------------------------------------------------------------
+
+class TestSearchCombined:
+    """search_combined() — tag + type filtering without FTS."""
+
+    def test_tag_filter_returns_matching_notes(self, zettel_service, search_service):
+        """search_combined(tags=[...]) returns all notes tagged with any of the given tags."""
+        # Arrange
+        note1 = _note(zettel_service, "Python Data Analysis", tags=["python", "data"])
+        note2 = _note(zettel_service, "Python Web", tags=["python", "web"])
+        _note(zettel_service, "Ruby", tags=["ruby"])
+
+        # Act
+        results = search_service.search_combined(tags=["python"])
+
+        # Assert
+        result_ids = {r.note.id for r in results}
+        assert note1.id in result_ids, "Python Data Analysis should match tag 'python'"
+        assert note2.id in result_ids, "Python Web should match tag 'python'"
+
+    def test_tag_and_type_filter_narrows_results(self, zettel_service, search_service):
+        """search_combined(tags+note_type) ANDs both filters."""
+        # Arrange
+        permanent = _note(zettel_service, "Permanent Python", tags=["python"], note_type=NoteType.PERMANENT)
+        _note(zettel_service, "Fleeting Python", tags=["python"], note_type=NoteType.FLEETING)
+
+        # Act
+        results = search_service.search_combined(tags=["python"], note_type=NoteType.PERMANENT)
+
+        # Assert
+        result_ids = {r.note.id for r in results}
+        assert permanent.id in result_ids
+        assert all(
+            r.note.note_type == NoteType.PERMANENT for r in results
+        ), "All results should be PERMANENT type"

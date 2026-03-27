@@ -7,11 +7,11 @@ from typing import List, Optional, Set, Tuple, Union
 logger = logging.getLogger(__name__)
 from sqlalchemy import or_, select, text
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import joinedload
 
 from slipbox_mcp.models.db_models import DBLink, DBNote, DBTag
 from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
 from slipbox_mcp.services.zettel_service import ZettelService
+from slipbox_mcp.storage.note_repository import _NOTE_EAGER_LOADS
 
 @dataclass
 class SearchResult:
@@ -69,7 +69,7 @@ class SearchService:
                     else:
                         logger.error("Required table missing from database schema: %s", e)
                     raise
-                if "fts5" in err or "unterminated string" in err:
+                if "fts5" in err or ("unterminated string" in err and "notes_fts" in err):
                     logger.warning("FTS5 query syntax error for %r: %s", fts_query, e)
                     return []
                 raise
@@ -120,11 +120,7 @@ class SearchService:
 
             query = (
                 select(DBNote)
-                .options(
-                    joinedload(DBNote.tags),
-                    joinedload(DBNote.outgoing_links),
-                    joinedload(DBNote.incoming_links)
-                )
+                .options(*_NOTE_EAGER_LOADS)
                 .where(DBNote.id.not_in(select(notes_with_links)))
             )
 
@@ -176,11 +172,7 @@ class SearchService:
             db_notes_query = (
                 select(DBNote)
                 .where(DBNote.id.in_(ordered_ids))
-                .options(
-                    joinedload(DBNote.tags),
-                    joinedload(DBNote.outgoing_links),
-                    joinedload(DBNote.incoming_links),
-                )
+                .options(*_NOTE_EAGER_LOADS)
             )
             db_notes_by_id = {
                 db_note.id: db_note
@@ -211,11 +203,7 @@ class SearchService:
         repository = self.zettel_service.repository
 
         with repository.session_factory() as session:
-            query = select(DBNote).options(
-                joinedload(DBNote.tags),
-                joinedload(DBNote.outgoing_links),
-                joinedload(DBNote.incoming_links)
-            )
+            query = select(DBNote).options(*_NOTE_EAGER_LOADS)
             if start_date:
                 query = query.where(date_col >= start_date)
             if end_date:
@@ -242,11 +230,7 @@ class SearchService:
         repository = self.zettel_service.repository
 
         with repository.session_factory() as session:
-            query = select(DBNote).options(
-                joinedload(DBNote.tags),
-                joinedload(DBNote.outgoing_links),
-                joinedload(DBNote.incoming_links),
-            )
+            query = select(DBNote).options(*_NOTE_EAGER_LOADS)
             if note_type:
                 query = query.where(DBNote.note_type == note_type.value)
             if start_date:
@@ -289,7 +273,7 @@ class SearchService:
                     else:
                         logger.error("Required table missing from database schema: %s", e)
                     raise
-                if "fts5" in err or "unterminated string" in err:
+                if "fts5" in err or ("unterminated string" in err and "notes_fts" in err):
                     logger.warning(
                         "FTS5 query syntax error for %r, returning metadata-only results: %s",
                         fts_query, e,

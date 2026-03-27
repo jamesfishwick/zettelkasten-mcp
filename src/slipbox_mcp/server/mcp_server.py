@@ -13,6 +13,21 @@ from slipbox_mcp.services.zettel_service import ZettelService
 
 logger = logging.getLogger(__name__)
 
+
+def _parse_tags(tags: Optional[str]) -> List[str]:
+    """Split a comma-separated tag string into a list of stripped tag names."""
+    if not tags:
+        return []
+    return [t.strip() for t in tags.split(",") if t.strip()]
+
+
+def _parse_refs(references: Optional[str]) -> List[str]:
+    """Split a newline-separated references string into a list of stripped entries."""
+    if not references:
+        return []
+    return [r.strip() for r in references.split("\n") if r.strip()]
+
+
 class ZettelkastenMcpServer:
     """MCP server for Zettelkasten."""
     def __init__(self):
@@ -112,11 +127,8 @@ class ZettelkastenMcpServer:
                 except ValueError:
                     return f"Invalid note type: {note_type}. Valid types are: {', '.join(t.value for t in NoteType)}"
 
-                tag_list = []
-                if tags:
-                    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
-
-                ref_list = [r.strip() for r in references.split("\n") if r.strip()] if references else []
+                tag_list = _parse_tags(tags)
+                ref_list = _parse_refs(references)
 
                 note = self.zettel_service.create_note(
                     title=title,
@@ -200,11 +212,9 @@ class ZettelkastenMcpServer:
 
                 tag_list = None
                 if tags is not None:  # Allow empty string to clear tags
-                    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+                    tag_list = _parse_tags(tags)
 
-                ref_list = None
-                if references is not None:  # Allow empty string to clear references
-                    ref_list = [r.strip() for r in references.split("\n") if r.strip()]
+                ref_list = _parse_refs(references) if references is not None else None
 
                 updated_note = self.zettel_service.update_note(
                     note_id=note_id,
@@ -347,9 +357,7 @@ class ZettelkastenMcpServer:
                 limit: Maximum results to return (default: 10)
             """
             try:
-                tag_list = None
-                if tags:
-                    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+                tag_list = _parse_tags(tags) if tags is not None else None
 
                 note_type_enum = None
                 if note_type:
