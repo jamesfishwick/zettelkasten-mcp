@@ -248,3 +248,30 @@ def test_export_note_raises_for_missing_id(zettel_service):
     """export_note must raise ValueError for an unknown note ID."""
     with pytest.raises(ValueError, match="not found"):
         zettel_service.export_note("nonexistent-id-000000000")
+
+
+def test_export_note_round_trips(zettel_service):
+    """export_note output must parse back to a note with identical id, tags, links, and references."""
+    ref = "Ahrens, S. (2017). How to Take Smart Notes."
+    note = zettel_service.create_note(
+        title="Round-trip Test",
+        content="Body text.",
+        note_type=NoteType.PERMANENT,
+        tags=["round-trip", "test"],
+        references=[ref],
+    )
+    target = zettel_service.create_note(title="Target", content="Target body.")
+    zettel_service.create_link(note.id, target.id, LinkType.REFERENCE, "key link")
+
+    exported = zettel_service.export_note(note.id)
+
+    # Re-parse the exported content via the same parser used for on-disk files
+    parsed = zettel_service.repository._parse_note_from_markdown(exported)
+    assert parsed is not None
+    assert parsed.id == note.id
+    assert parsed.note_type == NoteType.PERMANENT
+    assert {t.name for t in parsed.tags} == {"round-trip", "test"}
+    assert parsed.references == [ref]
+    assert len(parsed.links) == 1
+    assert parsed.links[0].target_id == target.id
+    assert parsed.links[0].description == "key link"
