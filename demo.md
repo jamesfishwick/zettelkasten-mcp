@@ -223,7 +223,7 @@ grep 'def zk_' src/zettelkasten_mcp/server/mcp_server.py | sed 's/.*def //' | se
   zk_update_note
   zk_delete_note
   zk_create_link
-  zk_remove_link
+  zk_delete_link
   zk_search_notes
   zk_get_linked_notes
   zk_get_all_tags

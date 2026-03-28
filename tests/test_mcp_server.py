@@ -429,3 +429,52 @@ class TestGuardClauses(MockServerBase):
     def test_get_cluster_report_rejects_limit_zero(self):
         result = self._tool("zk_get_cluster_report")(min_score=self.VALID_THRESHOLD, limit=0)
         assert result == self.LIMIT_ERROR
+
+
+# ---------------------------------------------------------------------------
+# Tool: zk_delete_link
+# ---------------------------------------------------------------------------
+
+class TestDeleteLinkTool(MockServerBase):
+    """zk_delete_link — deletes a link and reports errors for missing links."""
+
+    SOURCE_ID = "source123"
+    TARGET_ID = "target456"
+
+    def setup_method(self):
+        super().setup_method()
+        self.mock_note = MagicMock()
+        self.mock_note.id = self.SOURCE_ID
+        self.mock_zettel_service.delete_link.return_value = self.mock_note
+
+    def test_delete_link_returns_success_message(self):
+        result = self._tool("zk_delete_link")(
+            source_id=self.SOURCE_ID,
+            target_id=self.TARGET_ID,
+        )
+        assert self.SOURCE_ID in result
+        assert self.TARGET_ID in result
+        self.mock_zettel_service.delete_link.assert_called_once_with(
+            source_id=self.SOURCE_ID,
+            target_id=self.TARGET_ID,
+        )
+
+    def test_delete_link_returns_error_when_link_does_not_exist(self):
+        self.mock_zettel_service.delete_link.side_effect = ValueError(
+            f"No link exists from {self.SOURCE_ID} to {self.TARGET_ID}"
+        )
+        result = self._tool("zk_delete_link")(
+            source_id=self.SOURCE_ID,
+            target_id=self.TARGET_ID,
+        )
+        assert "error" in result.lower() or "Error" in result
+
+    def test_delete_link_returns_error_when_source_not_found(self):
+        self.mock_zettel_service.delete_link.side_effect = ValueError(
+            f"Source note with ID {self.SOURCE_ID} not found"
+        )
+        result = self._tool("zk_delete_link")(
+            source_id=self.SOURCE_ID,
+            target_id=self.TARGET_ID,
+        )
+        assert "error" in result.lower() or "Error" in result

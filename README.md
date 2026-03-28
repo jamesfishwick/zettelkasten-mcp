@@ -210,7 +210,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 | Tool | Description |
 |------|-------------|
 | `zk_create_link` | Create semantic links between notes |
-| `zk_remove_link` | Remove links |
+| `zk_delete_link` | Delete a link between two notes |
 | `zk_get_linked_notes` | Get notes linked to/from a note |
 
 ### Search & Discovery

@@ -195,29 +195,31 @@ class ZettelService:
 
         return source_note, reverse_note
 
-    def remove_link(
+    def delete_link(
         self,
         source_id: str,
         target_id: str,
-        link_type: Optional[LinkType] = None,
-        bidirectional: bool = False
-    ) -> Tuple[Note, Optional[Note]]:
-        """Remove a link between notes."""
+    ) -> Note:
+        """Delete a link between two notes. Raises ValueError if the link does not exist."""
         source_note = self.repository.get(source_id)
         if not source_note:
             raise ValueError(f"Source note with ID {source_id} not found")
 
-        source_note.remove_link(target_id, link_type)
+        target_note = self.repository.get(target_id)
+        if not target_note:
+            raise ValueError(f"Target note with ID {target_id} not found")
+
+        matching_links = [
+            link for link in source_note.links if link.target_id == target_id
+        ]
+        if not matching_links:
+            raise ValueError(
+                f"No link exists from {source_id} to {target_id}"
+            )
+
+        source_note.remove_link(target_id)
         source_note = self.repository.update(source_note)
-
-        reverse_note = None
-        if bidirectional:
-            target_note = self.repository.get(target_id)
-            if target_note:
-                target_note.remove_link(source_id, link_type)
-                reverse_note = self.repository.update(target_note)
-
-        return source_note, reverse_note
+        return source_note
 
     def get_linked_notes(
         self, note_id: str, direction: str = "outgoing"

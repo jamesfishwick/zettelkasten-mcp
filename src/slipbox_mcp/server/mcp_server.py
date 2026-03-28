@@ -307,29 +307,27 @@ class ZettelkastenMcpServer:
                 return self.format_error_response(e)
         self.zk_create_link = zk_create_link
 
-        @self.mcp.tool(name="zk_remove_link")
-        def zk_remove_link(
+        @self.mcp.tool(name="zk_delete_link")
+        def zk_delete_link(
             source_id: str,
             target_id: str,
-            bidirectional: bool = False
         ) -> str:
-            """Remove a link between two notes.
+            """Delete a link between two notes.
+
+            Removes all links from the source note to the target note,
+            persists the change to the markdown file, and updates the SQLite index.
+            Returns an error if either note is not found or no link exists.
 
             Args:
                 source_id: ID of the source note
                 target_id: ID of the target note
-                bidirectional: If true, removes links in both directions
             """
             try:
-                source_note, target_note = self.zettel_service.remove_link(
+                self.zettel_service.delete_link(
                     source_id=str(source_id),
                     target_id=str(target_id),
-                    bidirectional=bidirectional
                 )
-                if bidirectional:
-                    return f"Bidirectional link removed between {source_id} and {target_id}"
-                else:
-                    return f"Link removed from {source_id} to {target_id}"
+                return f"Link deleted from {source_id} to {target_id}"
             except Exception as e:
                 return self.format_error_response(e)
 

@@ -320,13 +320,12 @@ class TestSemanticLinks:
             description="Initial link description"
         )
         
-        # Remove the link
-        source, _ = zettel_service.remove_link(
+        # Delete the link
+        source = zettel_service.delete_link(
             source_id=source_note.id,
             target_id=target_note.id,
-            link_type=LinkType.REFERENCE
         )
-        
+
         # Verify link was removed
         assert not any(
             link.target_id == target_note.id for link in source.links
@@ -353,29 +352,29 @@ class TestSemanticLinks:
         assert matching_links[0].link_type == LinkType.EXTENDS
         assert matching_links[0].description == "Updated link description"
     
-    def test_removing_links(self, zettel_service):
-        """Test removing links with specific semantic types."""
+    def test_deleting_links(self, zettel_service):
+        """Test deleting all links between two notes."""
         # Create test notes
         source_note = zettel_service.create_note(
-            title="Link Removal Source",
-            content="Source note for link removal testing",
+            title="Link Deletion Source",
+            content="Source note for link deletion testing",
             note_type=NoteType.PERMANENT,
-            tags=["test", "link-removal"]
+            tags=["test", "link-deletion"]
         )
         target_note = zettel_service.create_note(
-            title="Link Removal Target",
-            content="Target note for link removal testing",
+            title="Link Deletion Target",
+            content="Target note for link deletion testing",
             note_type=NoteType.PERMANENT,
-            tags=["test", "link-removal"]
+            tags=["test", "link-deletion"]
         )
-        
+
         # Create multiple links with different types
         link_types = [
             LinkType.EXTENDS,
             LinkType.SUPPORTS,
             LinkType.QUESTIONS
         ]
-        
+
         for link_type in link_types:
             zettel_service.create_link(
                 source_id=source_note.id,
@@ -383,69 +382,54 @@ class TestSemanticLinks:
                 link_type=link_type,
                 description=f"{link_type.value} description"
             )
-        
+
         # Refresh the source note
         source_note = zettel_service.get_note(source_note.id)
-        
+
         # Verify all links were created
         target_links = [link for link in source_note.links if link.target_id == target_note.id]
         assert len(target_links) == len(link_types)
-        
-        # Remove specific link type
-        zettel_service.remove_link(
+
+        # Delete all links to target
+        source_note = zettel_service.delete_link(
             source_id=source_note.id,
             target_id=target_note.id,
-            link_type=LinkType.SUPPORTS
         )
-        
-        # Refresh the source note
-        source_note = zettel_service.get_note(source_note.id)
-        
-        # Verify only the specified link was removed
-        target_links = [link for link in source_note.links if link.target_id == target_note.id]
-        assert len(target_links) == len(link_types) - 1
-        assert not any(link.link_type == LinkType.SUPPORTS for link in target_links)
-        assert any(link.link_type == LinkType.EXTENDS for link in target_links)
-        assert any(link.link_type == LinkType.QUESTIONS for link in target_links)
-        
-        # Remove all remaining links to target
-        zettel_service.remove_link(
-            source_id=source_note.id,
-            target_id=target_note.id
-        )
-        
-        # Refresh the source note
-        source_note = zettel_service.get_note(source_note.id)
-        
+
         # Verify all links to target were removed
         target_links = [link for link in source_note.links if link.target_id == target_note.id]
         assert len(target_links) == 0
+
+        # Verify persistence
+        reloaded = zettel_service.get_note(source_note.id)
+        target_links = [link for link in reloaded.links if link.target_id == target_note.id]
+        assert len(target_links) == 0
     
-    def test_bidirectional_link_removal(self, zettel_service):
-        """Test removing bidirectional links."""
+    def test_bidirectional_link_deletion(self, zettel_service):
+        """Test deleting both directions of a bidirectional link."""
         # Create test notes
         source_note = zettel_service.create_note(
-            title="Bidirectional Removal Source",
-            content="Source note for bidirectional link removal",
+            title="Bidirectional Deletion Source",
+            content="Source note for bidirectional link deletion",
             note_type=NoteType.PERMANENT,
-            tags=["test", "bidirectional-removal"]
+            tags=["test", "bidirectional-deletion"]
         )
         target_note = zettel_service.create_note(
-            title="Bidirectional Removal Target",
-            content="Target note for bidirectional link removal",
+            title="Bidirectional Deletion Target",
+            content="Target note for bidirectional link deletion",
             note_type=NoteType.PERMANENT,
-            tags=["test", "bidirectional-removal"]
+            tags=["test", "bidirectional-deletion"]
         )
-        
+
         # Create bidirectional link
         source, target = zettel_service.create_link(
             source_id=source_note.id,
             target_id=target_note.id,
             link_type=LinkType.EXTENDS,
-            description="Bidirectional link for removal testing",
+            description="Bidirectional link for deletion testing",
             bidirectional=True
         )
-        
+
         # Verify bidirectional link was created
         assert any(
             link.target_id == target_note.id and link.link_type == LinkType.EXTENDS
@@ -455,15 +439,22 @@ class TestSemanticLinks:
             link.target_id == source_note.id and link.link_type == LinkType.EXTENDED_BY
             for link in target.links
         )
-        
-        # Remove bidirectional link
-        source, target = zettel_service.remove_link(
+
+        # Delete forward link
+        zettel_service.delete_link(
             source_id=source_note.id,
             target_id=target_note.id,
-            bidirectional=True
         )
-        
-        # Verify bidirectional link was removed
+
+        # Delete reverse link
+        zettel_service.delete_link(
+            source_id=target_note.id,
+            target_id=source_note.id,
+        )
+
+        # Verify both directions removed
+        source = zettel_service.get_note(source_note.id)
+        target = zettel_service.get_note(target_note.id)
         assert not any(
             link.target_id == target_note.id for link in source.links
         )
@@ -983,3 +974,76 @@ Test content for parsing links from markdown.
         
         # Orphan should not be in central notes
         assert orphan.id not in central_dict
+
+
+class TestDeleteLink:
+    """Tests for ZettelService.delete_link()."""
+
+    def test_delete_link_removes_link_and_persists(self, zettel_service):
+        """Deleting a link removes it from the source note and persists to disk."""
+        source = zettel_service.create_note(
+            title="Delete Link Source",
+            content="Source note",
+            note_type=NoteType.PERMANENT,
+            tags=["test"],
+        )
+        target = zettel_service.create_note(
+            title="Delete Link Target",
+            content="Target note",
+            note_type=NoteType.PERMANENT,
+            tags=["test"],
+        )
+        zettel_service.create_link(
+            source_id=source.id,
+            target_id=target.id,
+            link_type=LinkType.REFERENCE,
+        )
+
+        updated = zettel_service.delete_link(source.id, target.id)
+        assert not any(link.target_id == target.id for link in updated.links)
+
+        # Verify persistence
+        reloaded = zettel_service.get_note(source.id)
+        assert not any(link.target_id == target.id for link in reloaded.links)
+
+    def test_delete_link_raises_when_no_link_exists(self, zettel_service):
+        """Should raise ValueError when no link exists between the notes."""
+        source = zettel_service.create_note(
+            title="No Link Source",
+            content="Source note",
+            note_type=NoteType.PERMANENT,
+            tags=["test"],
+        )
+        target = zettel_service.create_note(
+            title="No Link Target",
+            content="Target note",
+            note_type=NoteType.PERMANENT,
+            tags=["test"],
+        )
+
+        with pytest.raises(ValueError, match="No link exists"):
+            zettel_service.delete_link(source.id, target.id)
+
+    def test_delete_link_raises_when_source_not_found(self, zettel_service):
+        """Should raise ValueError when source note doesn't exist."""
+        target = zettel_service.create_note(
+            title="Target",
+            content="Target note",
+            note_type=NoteType.PERMANENT,
+            tags=["test"],
+        )
+
+        with pytest.raises(ValueError, match="Source note"):
+            zettel_service.delete_link("nonexistent", target.id)
+
+    def test_delete_link_raises_when_target_not_found(self, zettel_service):
+        """Should raise ValueError when target note doesn't exist."""
+        source = zettel_service.create_note(
+            title="Source",
+            content="Source note",
+            note_type=NoteType.PERMANENT,
+            tags=["test"],
+        )
+
+        with pytest.raises(ValueError, match="Target note"):
+            zettel_service.delete_link(source.id, "nonexistent")
