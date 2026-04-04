@@ -1,6 +1,7 @@
 """Shared constants for tool descriptions and prompt templates.
 
 Single source of truth for all user-facing text in the MCP server.
+Changing this file triggers LLM evals in CI.
 Tool constants are named after the tool (uppercase snake_case).
 Prompt constants are prefixed with PROMPT_.
 """
