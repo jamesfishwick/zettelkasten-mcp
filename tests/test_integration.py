@@ -1,5 +1,4 @@
 """Integration tests for the Zettelkasten MCP system."""
-from pathlib import Path
 import pytest
 from slipbox_mcp.models.schema import LinkType, NoteType
 from slipbox_mcp.server.mcp_server import ZettelkastenMcpServer

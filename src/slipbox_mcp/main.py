@@ -77,10 +77,10 @@ def main():
     db_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        logger.info(f"Using SQLite database: {config.get_db_url()}")
+        logger.info("Using SQLite database: %s", config.get_db_url())
         init_db()
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error("Failed to initialize database: %s", e)
         sys.exit(1)
 
     try:
@@ -88,7 +88,7 @@ def main():
         server = ZettelkastenMcpServer()
         server.run()
     except Exception as e:
-        logger.error(f"Error running server: {e}")
+        logger.error("Error running server: %s", e)
         sys.exit(1)
 
 if __name__ == "__main__":

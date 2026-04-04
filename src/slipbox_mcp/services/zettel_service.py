@@ -3,8 +3,7 @@ import datetime
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from slipbox_mcp.config import config
-from slipbox_mcp.models.schema import Link, LinkType, Note, NoteType, Tag
+from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
 from slipbox_mcp.storage.note_repository import NoteRepository
 
 logger = logging.getLogger(__name__)
@@ -14,11 +13,6 @@ class ZettelService:
 
     def __init__(self, repository: Optional[NoteRepository] = None):
         self.repository = repository or NoteRepository()
-
-    def initialize(self) -> None:
-        """Initialize the service and dependencies."""
-        # Repository initializes itself; no-op for now.
-        pass
 
     def create_note(
         self,

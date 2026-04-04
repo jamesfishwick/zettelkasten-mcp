@@ -1,10 +1,8 @@
 # tests/test_models.py
 """Tests for the data models used in the Zettelkasten MCP server."""
 import datetime
-import time
 import re
 import pytest
-from unittest.mock import patch
 from pydantic import ValidationError
 from slipbox_mcp.models.schema import Link, LinkType, Note, NoteType, Tag, generate_id
 

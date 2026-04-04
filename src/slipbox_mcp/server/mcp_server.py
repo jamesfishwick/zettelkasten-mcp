@@ -2,11 +2,11 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional
 from sqlalchemy import exc as sqlalchemy_exc
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp import FastMCP
 from slipbox_mcp.config import config
-from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
+from slipbox_mcp.models.schema import LinkType, NoteType
 from slipbox_mcp.services.search_service import SearchService
 from slipbox_mcp.services.cluster_service import ClusterService
 from slipbox_mcp.services.zettel_service import ZettelService
@@ -44,8 +44,6 @@ class ZettelkastenMcpServer:
 
     def initialize(self) -> None:
         """Initialize services."""
-        self.zettel_service.initialize()
-        self.search_service.initialize()
         self._maybe_refresh_clusters()
         logger.info("Zettelkasten MCP server initialized")
 
@@ -68,23 +66,23 @@ class ZettelkastenMcpServer:
                 if report:
                     new_report.dismissed_cluster_ids = report.dismissed_cluster_ids
                 self.cluster_service.save_report(new_report)
-                logger.info(f"Cluster report refreshed: {new_report.stats}")
+                logger.info("Cluster report refreshed: %s", new_report.stats)
         except Exception as e:
-            logger.warning(f"Failed to refresh clusters on startup: {e}")
+            logger.warning("Failed to refresh clusters on startup: %s", e)
 
     def format_error_response(self, error: Exception) -> str:
         """Format an error response for MCP tool callers."""
         error_id = str(uuid.uuid4())[:8]
 
         if isinstance(error, ValueError):
-            logger.error(f"Validation error [{error_id}]: {str(error)}")
-            return f"Error: {str(error)}"
+            logger.error("Validation error [%s]: %s", error_id, error)
+            return f"Error: {error}"
         elif isinstance(error, (IOError, OSError)):
-            logger.error(f"File system error [{error_id}]: {str(error)}", exc_info=True)
-            return f"Error: {str(error)}"
+            logger.error("File system error [%s]: %s", error_id, error, exc_info=True)
+            return f"Error: {error}"
         else:
-            logger.error(f"Unexpected error [{error_id}]: {str(error)}", exc_info=True)
-            return f"Error: {str(error)}"
+            logger.error("Unexpected error [%s]: %s", error_id, error, exc_info=True)
+            return f"Error: {error}"
 
     def _register_tools(self) -> None:
         """Register MCP tools."""
@@ -284,8 +282,6 @@ class ZettelkastenMcpServer:
             """
             try:
                 try:
-                    source_id_str = str(source_id)
-                    target_id_str = str(target_id)
                     link_type_enum = LinkType(link_type.lower())
                 except ValueError:
                     return f"Invalid link type: {link_type}. Valid types are: {', '.join(t.value for t in LinkType)}"
@@ -303,9 +299,8 @@ class ZettelkastenMcpServer:
                     return f"Link created from {source_id} to {target_id}"
             except (Exception, sqlalchemy_exc.IntegrityError) as e:
                 if "UNIQUE constraint failed" in str(e):
-                    return f"A link of this type already exists between these notes. Try a different link type."
+                    return "A link of this type already exists between these notes. Try a different link type."
                 return self.format_error_response(e)
-        self.zk_create_link = zk_create_link
 
         @self.mcp.tool(name="zk_remove_link")
         def zk_remove_link(
@@ -440,7 +435,6 @@ class ZettelkastenMcpServer:
                 return output
             except Exception as e:
                 return self.format_error_response(e)
-        self.zk_get_linked_notes = zk_get_linked_notes
 
         @self.mcp.tool(name="zk_get_all_tags")
         def zk_get_all_tags() -> str:
@@ -627,7 +621,7 @@ class ZettelkastenMcpServer:
                     output += f"   Preview: {content_preview}\n\n"
                 return output
             except ValueError as e:
-                logger.error(f"Date parsing error: {str(e)}")
+                logger.error("Date parsing error: %s", e)
                 return f"Error parsing date: {str(e)}"
             except Exception as e:
                 return self.format_error_response(e)
@@ -649,7 +643,7 @@ class ZettelkastenMcpServer:
                     f"Change in note count: {note_count_after - note_count_before}"
                 )
             except Exception as e:
-                logger.error(f"Failed to rebuild index: {e}", exc_info=True)
+                logger.error("Failed to rebuild index: %s", e, exc_info=True)
                 return self.format_error_response(e)
 
     def _register_resources(self) -> None:
@@ -826,7 +820,7 @@ class ZettelkastenMcpServer:
                             )
                             links_created += 1
                         except Exception as link_error:
-                            logger.warning(f"Failed to create link to {note_info['id']}: {link_error}")
+                            logger.warning("Failed to create link to %s: %s", note_info['id'], link_error)
                 
                 self.cluster_service.dismiss_cluster(cluster_id)
 
@@ -849,16 +843,16 @@ class ZettelkastenMcpServer:
                 report = self.cluster_service.detect_clusters()
                 path = self.cluster_service.save_report(report)
                 
-                output = f"Cluster analysis complete.\n"
+                output = "Cluster analysis complete.\n"
                 output += f"Report saved to: {path}\n\n"
-                output += f"Stats:\n"
+                output += "Stats:\n"
                 output += f"  Total notes: {report.stats['total_notes']}\n"
                 output += f"  Orphaned notes: {report.stats['total_orphans']}\n"
                 output += f"  Clusters detected: {report.stats['clusters_detected']}\n"
                 output += f"  Clusters needing structure: {report.stats['clusters_needing_structure']}\n"
                 
                 if report.clusters:
-                    output += f"\nTop clusters:\n"
+                    output += "\nTop clusters:\n"
                     for cluster in report.clusters[:3]:
                         output += f"  - {cluster.suggested_title} (score: {cluster.score})\n"
                 

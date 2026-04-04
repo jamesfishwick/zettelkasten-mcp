@@ -2,17 +2,16 @@
 import datetime
 import json
 import logging
-from typing import List, Optional
 
 from sqlalchemy import (Column, DateTime, Engine, ForeignKey, Integer, String,
                        Table, Text, UniqueConstraint, create_engine, text)
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-logger = logging.getLogger(__name__)
-
 from slipbox_mcp.config import config
 from slipbox_mcp.models.schema import LinkType, NoteType
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 

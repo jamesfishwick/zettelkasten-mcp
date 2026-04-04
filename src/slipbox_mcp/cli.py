@@ -15,10 +15,10 @@ from datetime import datetime
 # Handle broken pipe gracefully (e.g., when piping to head)
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-from slipbox_mcp.services.zettel_service import ZettelService
-from slipbox_mcp.services.cluster_service import ClusterService
-from slipbox_mcp.services.search_service import SearchService
-from slipbox_mcp.storage.note_repository import NoteRepository
+from slipbox_mcp.services.zettel_service import ZettelService  # noqa: E402
+from slipbox_mcp.services.cluster_service import ClusterService  # noqa: E402
+from slipbox_mcp.services.search_service import SearchService  # noqa: E402
+from slipbox_mcp.storage.note_repository import NoteRepository  # noqa: E402
 
 
 def cmd_status(args):

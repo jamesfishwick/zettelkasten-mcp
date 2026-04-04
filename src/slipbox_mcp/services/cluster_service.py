@@ -8,7 +8,6 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from slipbox_mcp.config import config
 from slipbox_mcp.models.schema import Note, NoteType
 from slipbox_mcp.services.zettel_service import ZettelService
 
@@ -274,7 +273,7 @@ class ClusterService:
                 dismissed_cluster_ids=data.get("dismissed_cluster_ids", [])
             )
         except Exception as e:
-            logger.error(f"Failed to load cluster report: {e}")
+            logger.error("Failed to load cluster report: %s", e)
             return None
 
     def dismiss_cluster(self, cluster_id: str) -> None:
