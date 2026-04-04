@@ -1,9 +1,9 @@
-# zettelkasten-mcp: Agentic Knowledge Management
+# slipbox-mcp: Agentic Knowledge Management
 
 *2026-03-18T00:10:14Z by Showboat 0.6.1*
 <!-- showboat-id: e3436a94-5c7c-429b-9cb7-13b920f65a44 -->
 
-zettelkasten-mcp is a Model Context Protocol server that gives Claude an active role in managing a Zettelkasten knowledge system. Instead of passively assisting with note-taking, Claude creates atomic notes, forms semantic links, and detects emergent knowledge clusters.
+slipbox-mcp is a Model Context Protocol server that gives Claude an active role in managing a Zettelkasten knowledge system. Instead of passively assisting with note-taking, Claude creates atomic notes, forms semantic links, and detects emergent knowledge clusters.
 
 Notes are stored as plain markdown files with YAML frontmatter — readable and editable in any tool (Obsidian, Foam, Logseq, etc.). A SQLite+FTS5 database provides fast full-text search and is rebuilt from files on demand.
 
