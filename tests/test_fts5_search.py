@@ -160,49 +160,37 @@ def test_search_by_text_non_fts5_operational_error_reraises(zettel_service, sear
             search_service.search_by_text("test query")
 
 
-def test_search_combined_fts5_operational_error_returns_metadata_fallback(zettel_service, search_service):
-    """When FTS5 raises OperationalError, search_combined returns metadata-only results.
-
-    search_combined uses one session block with two execute() calls:
-    1. ORM Select query (metadata filter) — must succeed and return real DBNote objects
-    2. text() FTS5 query — raises OperationalError to trigger the fallback
-
-    We intercept at the execute() level, routing by SQL type so the metadata
-    query uses the real session and only the FTS5 call raises.
-    """
-    from sqlalchemy.sql.elements import TextClause
-
+def test_search_combined_fts5_syntax_error_returns_empty(zettel_service, search_service):
+    """When FTS5 raises a syntax error, search_combined returns [] via _run_fts5_query."""
     zettel_service.create_note(
         title="Fallback Note",
         content="Content for fallback test.",
         tags=["fallback-tag"],
     )
-    fts5_err = OperationalError(
-        "fts5: syntax error near X", params=None,
-        orig=Exception("fts5: syntax error near X"),
-    )
-
-    repository = search_service.zettel_service.repository
-    original_factory = repository.session_factory
-
-    # Wrap session.execute: pass ORM queries through to the real session,
-    # raise FTS5 error only for text() queries.
-    with original_factory() as real_session:
-        original_execute = real_session.execute
-
-        def selective_execute(stmt, *args, **kwargs):
-            if isinstance(stmt, TextClause):
-                raise fts5_err
-            return original_execute(stmt, *args, **kwargs)
-
-        with patch.object(real_session, "execute", side_effect=selective_execute):
-            with patch.object(repository, "session_factory", return_value=real_session):
-                result = search_service.search_combined(
-                    query_text="fallback query", tags=["fallback-tag"]
-                )
+    with patch.object(search_service, "_run_fts5_query", return_value=[]):
+        result = search_service.search_combined(
+            query_text="fallback query", tags=["fallback-tag"]
+        )
 
     assert isinstance(result, list)
-    assert len(result) >= 1, "Fallback must return at least the metadata-matched note"
-    assert all(r.score == 0.0 for r in result)
-    assert all("text search unavailable" in r.matched_context for r in result)
-    assert all(r.matched_terms == set() for r in result)
+    assert result == []
+
+
+def test_fts5_query_returns_scored_rows(search_service, zettel_service):
+    """_run_fts5_query returns (id, score, context) tuples."""
+    zettel_service.create_note(
+        title="Epistemology Deep Dive",
+        content="This note is about epistemology.",
+        tags=["philosophy"],
+    )
+    results = search_service._run_fts5_query('"epistemology"')
+    assert len(results) >= 1
+    assert results[0].id is not None
+    assert results[0].bm25_score < 0  # BM25 returns negative scores
+
+
+def test_fts5_query_returns_empty_on_syntax_error(search_service, zettel_service):
+    """FTS5 syntax errors return empty list, not exception."""
+    zettel_service.create_note(title="Test", content="Test content", tags=["test"])
+    results = search_service._run_fts5_query("NEAR(broken query")
+    assert results == []

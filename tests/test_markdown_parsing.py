@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from slipbox_mcp.models.schema import LinkType, Tag
+from slipbox_mcp.models.schema import LinkType
 from slipbox_mcp.storage.note_repository import (
     _parse_frontmatter_dates,
     _parse_frontmatter_tags,
