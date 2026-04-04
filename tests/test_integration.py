@@ -40,7 +40,7 @@ class TestNoteLifecycle:
         # Assert
         retrieved = zettel_service.get_note(note.id)
         assert retrieved is not None, f"Note {note.id} not found after creation"
-        assert retrieved.title == self.TITLE
+        assert retrieved.title == self.TITLE, f"Expected title {self.TITLE!r}, got {retrieved.title!r}"
         EXPECTED_CONTENT = f"# {self.TITLE}\n\n{self.CONTENT}"
         assert retrieved.content.strip() == EXPECTED_CONTENT.strip(), (
             "Retrieved content should include auto-prepended title heading"
@@ -64,8 +64,8 @@ class TestNoteLifecycle:
         # Assert
         assert note_file.exists(), f"Note file not found on disk: {note_file}"
         file_content = note_file.read_text()
-        assert self.TITLE in file_content
-        assert self.CONTENT in file_content
+        assert self.TITLE in file_content, f"Title {self.TITLE!r} not found in file content"
+        assert self.CONTENT in file_content, f"Content {self.CONTENT!r} not found in file content"
 
 
 # ---------------------------------------------------------------------------

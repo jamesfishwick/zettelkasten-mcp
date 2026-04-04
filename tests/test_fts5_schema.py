@@ -18,7 +18,7 @@ def test_fts5_columns(note_repository):
         result = session.execute(
             text("SELECT rowid FROM notes_fts WHERE notes_fts MATCH 'test'")
         ).fetchall()
-    assert any(row[0] == 999999 for row in result)
+    assert any(row[0] == 999999 for row in result), "Inserted FTS5 row with rowid 999999 should be matchable"
 
 def test_fts5_trigger_sync_on_insert(note_repository):
     """Inserting into notes via repository must auto-populate notes_fts via trigger."""
@@ -36,7 +36,7 @@ def test_fts5_trigger_sync_on_insert(note_repository):
             text("SELECT rowid FROM notes_fts WHERE notes_fts MATCH 'TriggerSyncTitle'")
         ).fetchall()
 
-    assert len(result) == 1
+    assert len(result) == 1, f"Expected 1 FTS5 row for trigger-synced note, got {len(result)}"
 
 def test_fts5_populated_after_rebuild(note_repository):
     """FTS index must be queryable after rebuild_index runs."""
@@ -56,4 +56,4 @@ def test_fts5_populated_after_rebuild(note_repository):
             text("SELECT rowid FROM notes_fts WHERE notes_fts MATCH 'antidisestablishmentarianism'")
         ).fetchall()
 
-    assert len(results) == 1
+    assert len(results) == 1, f"Expected 1 FTS5 result after rebuild, got {len(results)}"

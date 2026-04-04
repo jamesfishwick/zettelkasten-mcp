@@ -169,7 +169,7 @@ class TestFindCentralNotes:
         results = search_service.find_central_notes(limit=10)
 
         # Assert
-        assert len(results) >= 1
+        assert len(results) >= 1, "Expected at least 1 central note result"
         assert results[0][0].id == hub.id, "Hub should rank first with most connections"
         assert results[0][1] == 3, f"Hub should have connection count 3, got {results[0][1]}"
 
@@ -179,7 +179,7 @@ class TestFindCentralNotes:
         _note(zettel_service, "Isolated")
 
         # Act / Assert
-        assert search_service.find_central_notes() == []
+        assert search_service.find_central_notes() == [], "Expected empty list when no notes have links"
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +215,7 @@ class TestSearchCombined:
 
         # Assert
         result_ids = {r.note.id for r in results}
-        assert permanent.id in result_ids
+        assert permanent.id in result_ids, "Permanent Python note should match tag+type filter"
         assert all(
             r.note.note_type == NoteType.PERMANENT for r in results
-        ), "All results should be PERMANENT type"
+        ), f"All results should be PERMANENT type, got types: {[r.note.note_type for r in results]}"

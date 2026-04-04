@@ -3,89 +3,99 @@ import frontmatter as fm
 import pytest
 from slipbox_mcp.models.schema import LinkType, NoteType
 
+
 def test_create_note(zettel_service):
-    """Test creating a note through the service."""
-    # Create a test note
+    """create_note returns a note with all fields populated."""
+    # Act
     note = zettel_service.create_note(
         title="Service Test Note",
         content="Testing note creation through the service.",
         note_type=NoteType.PERMANENT,
         tags=["service", "test"]
     )
-    # Verify note was created
-    assert note.id is not None
-    assert note.title == "Service Test Note"
-    assert note.content == "Testing note creation through the service."
-    assert note.note_type == NoteType.PERMANENT
-    assert len(note.tags) == 2
-    assert {tag.name for tag in note.tags} == {"service", "test"}
+
+    # Assert
+    assert note.id is not None, "Created note must have a generated ID"
+    assert note.title == "Service Test Note", f"Title mismatch: {note.title!r}"
+    assert note.content == "Testing note creation through the service.", f"Content mismatch: {note.content!r}"
+    assert note.note_type == NoteType.PERMANENT, f"Note type mismatch: {note.note_type!r}"
+    assert {tag.name for tag in note.tags} == {"service", "test"}, (
+        f"Expected tags {{'service', 'test'}}, got {{{', '.join(t.name for t in note.tags)}}}"
+    )
+
 
 def test_get_note(zettel_service):
-    """Test retrieving a note through the service."""
-    # Create a test note
+    """get_note retrieves a note with title heading prepended to content."""
+    # Arrange
     note = zettel_service.create_note(
         title="Service Get Note",
         content="Testing note retrieval through the service.",
         note_type=NoteType.PERMANENT,
         tags=["service", "get"]
     )
-    # Retrieve the note
-    retrieved_note = zettel_service.get_note(note.id)
-    # Verify note was retrieved
-    assert retrieved_note is not None
-    assert retrieved_note.id == note.id
-    assert retrieved_note.title == "Service Get Note"
-    
-    # Note content includes the title as a markdown header - account for this in our test
+
+    # Act
+    retrieved = zettel_service.get_note(note.id)
+
+    # Assert
+    assert retrieved is not None, f"Note {note.id} not found after creation"
+    assert retrieved.id == note.id, f"ID mismatch: {retrieved.id!r} != {note.id!r}"
+    assert retrieved.title == "Service Get Note", f"Title mismatch: {retrieved.title!r}"
     expected_content = f"# {note.title}\n\n{note.content}"
-    assert retrieved_note.content.strip() == expected_content.strip()
-    
-    assert retrieved_note.note_type == NoteType.PERMANENT
-    assert {tag.name for tag in retrieved_note.tags} == {"service", "get"}
+    assert retrieved.content.strip() == expected_content.strip(), (
+        "Retrieved content should include auto-prepended title heading"
+    )
+    assert {tag.name for tag in retrieved.tags} == {"service", "get"}, f"Tag mismatch: {{{', '.join(t.name for t in retrieved.tags)}}}"
+
 
 def test_update_note(zettel_service):
-    """Test updating a note through the service."""
-    # Create a test note
+    """update_note persists new values visible on subsequent get."""
+    # Arrange
     note = zettel_service.create_note(
         title="Service Update Note",
         content="Testing note update through the service.",
         note_type=NoteType.PERMANENT,
         tags=["service", "update"]
     )
-    # Update the note
-    updated_note = zettel_service.update_note(
+
+    # Act
+    updated = zettel_service.update_note(
         note_id=note.id,
         title="Updated Service Note",
         content="This note has been updated through the service.",
         tags=["service", "updated"]
     )
-    # Verify note was updated
-    assert updated_note.id == note.id
-    assert updated_note.title == "Updated Service Note"
-    assert "This note has been updated through the service." in updated_note.content
-    assert {tag.name for tag in updated_note.tags} == {"service", "updated"}
+
+    # Assert
+    assert updated.id == note.id, "Updated note should keep the same ID"
+    assert updated.title == "Updated Service Note", f"Title mismatch: {updated.title!r}"
+    assert "This note has been updated through the service." in updated.content, f"Expected update text in content: {updated.content!r}"
+    assert {tag.name for tag in updated.tags} == {"service", "updated"}, f"Tag mismatch: {{{', '.join(t.name for t in updated.tags)}}}"
+
 
 def test_delete_note(zettel_service):
-    """Test deleting a note through the service."""
-    # Create a test note
+    """delete_note removes the note so get_note returns None."""
+    # Arrange
     note = zettel_service.create_note(
         title="Service Delete Note",
         content="Testing note deletion through the service.",
         note_type=NoteType.PERMANENT,
         tags=["service", "delete"]
     )
-    # Verify note exists
-    retrieved_note = zettel_service.get_note(note.id)
-    assert retrieved_note is not None
-    # Delete the note
+    assert zettel_service.get_note(note.id) is not None, "Note should exist before deletion"
+
+    # Act
     zettel_service.delete_note(note.id)
-    # Verify note no longer exists
-    deleted_note = zettel_service.get_note(note.id)
-    assert deleted_note is None
+
+    # Assert
+    assert zettel_service.get_note(note.id) is None, (
+        f"Note {note.id} should be gone after delete"
+    )
+
 
 def test_create_link(zettel_service):
-    """Test creating a link between notes through the service."""
-    # Create test notes
+    """create_link with bidirectional=True creates forward and inverse links."""
+    # Arrange
     source_note = zettel_service.create_note(
         title="Service Source Note",
         content="Testing link creation (source).",
@@ -98,7 +108,8 @@ def test_create_link(zettel_service):
         note_type=NoteType.PERMANENT,
         tags=["service", "link", "target"]
     )
-    # Create a link
+
+    # Act
     source, target = zettel_service.create_link(
         source_id=source_note.id,
         target_id=target_note.id,
@@ -106,29 +117,35 @@ def test_create_link(zettel_service):
         description="A test link via service",
         bidirectional=True
     )
-    # Verify link was created
-    assert len(source.links) == 1
-    assert source.links[0].target_id == target_note.id
-    assert source.links[0].link_type == LinkType.REFERENCE
-    assert source.links[0].description == "A test link via service"
-    # Verify bidirectional link
-    assert len(target.links) == 1
-    assert target.links[0].target_id == source_note.id
-    assert target.links[0].link_type == LinkType.REFERENCE
-    # Test get_linked_notes
-    outgoing_links = zettel_service.get_linked_notes(source_note.id, "outgoing")
-    assert len(outgoing_links) == 1
-    assert outgoing_links[0].id == target_note.id
-    incoming_links = zettel_service.get_linked_notes(target_note.id, "incoming")
-    assert len(incoming_links) == 1
-    assert incoming_links[0].id == source_note.id
-    both_links = zettel_service.get_linked_notes(source_note.id, "both")
-    assert len(both_links) == 1
-    assert both_links[0].id == target_note.id
+
+    # Assert -- forward link
+    assert len(source.links) == 1, f"Source should have 1 link, got {len(source.links)}"
+    assert source.links[0].target_id == target_note.id, f"Forward link target mismatch: {source.links[0].target_id!r}"
+    assert source.links[0].link_type == LinkType.REFERENCE, f"Forward link type mismatch: {source.links[0].link_type!r}"
+    assert source.links[0].description == "A test link via service", f"Forward link description mismatch: {source.links[0].description!r}"
+
+    # Assert -- inverse link
+    assert len(target.links) == 1, f"Target should have 1 inverse link, got {len(target.links)}"
+    assert target.links[0].target_id == source_note.id, f"Inverse link target mismatch: {target.links[0].target_id!r}"
+    assert target.links[0].link_type == LinkType.REFERENCE, f"Inverse link type mismatch: {target.links[0].link_type!r}"
+
+    # Assert -- traversal
+    outgoing = zettel_service.get_linked_notes(source_note.id, "outgoing")
+    assert len(outgoing) == 1, f"Expected 1 outgoing link, got {len(outgoing)}"
+    assert outgoing[0].id == target_note.id, f"Outgoing note ID mismatch: {outgoing[0].id!r}"
+
+    incoming = zettel_service.get_linked_notes(target_note.id, "incoming")
+    assert len(incoming) == 1, f"Expected 1 incoming link, got {len(incoming)}"
+    assert incoming[0].id == source_note.id, f"Incoming note ID mismatch: {incoming[0].id!r}"
+
+    both = zettel_service.get_linked_notes(source_note.id, "both")
+    assert len(both) == 1, f"Expected 1 'both' link, got {len(both)}"
+    assert both[0].id == target_note.id, f"Both-direction note ID mismatch: {both[0].id!r}"
+
 
 def test_search_notes(zettel_service):
-    """Test searching for notes through the service."""
-    # Create test notes
+    """Tag search, add_tag, and remove_tag work through the service."""
+    # Arrange
     note1 = zettel_service.create_note(
         title="Python Basics",
         content="Introduction to Python programming.",
@@ -141,30 +158,34 @@ def test_search_notes(zettel_service):
         note_type=NoteType.PERMANENT,
         tags=["python", "advanced", "service"]
     )
-    note3 = zettel_service.create_note(
+    zettel_service.create_note(
         title="JavaScript Introduction",
         content="Basics of JavaScript programming.",
         note_type=NoteType.PERMANENT,
         tags=["javascript", "programming", "service"]
     )
-    
-    # Search by tags instead of content since that's more reliable
+
+    # Act -- tag search
     python_notes = zettel_service.get_notes_by_tag("python")
-    assert len(python_notes) == 2
-    assert {n.id for n in python_notes} == {note1.id, note2.id}
-    
-    # Test adding and removing tags
-    first_note = python_notes[0]
-    zettel_service.add_tag_to_note(first_note.id, "newTag")
-    updated_note = zettel_service.get_note(first_note.id)
-    assert "newTag" in {tag.name for tag in updated_note.tags}
-    zettel_service.remove_tag_from_note(first_note.id, "newTag")
-    updated_note = zettel_service.get_note(first_note.id)
-    assert "newTag" not in {tag.name for tag in updated_note.tags}
+
+    # Assert
+    assert len(python_notes) == 2, f"Expected 2 python-tagged notes, got {len(python_notes)}"
+    assert {n.id for n in python_notes} == {note1.id, note2.id}, f"Python notes ID mismatch: {{{', '.join(n.id for n in python_notes)}}}"
+
+    # Act -- add/remove tag
+    first = python_notes[0]
+    zettel_service.add_tag_to_note(first.id, "newTag")
+    updated = zettel_service.get_note(first.id)
+    assert "newTag" in {tag.name for tag in updated.tags}, "newTag should be present after add"
+
+    zettel_service.remove_tag_from_note(first.id, "newTag")
+    updated = zettel_service.get_note(first.id)
+    assert "newTag" not in {tag.name for tag in updated.tags}, "newTag should be gone after remove"
+
 
 def test_find_similar_notes(zettel_service):
-    """Test finding similar notes."""
-    # Create test notes with shared tags and links
+    """find_similar_notes returns notes sharing tags or links with the reference note."""
+    # Arrange
     note1 = zettel_service.create_note(
         title="Machine Learning Basics",
         content="Introduction to machine learning concepts.",
@@ -183,95 +204,96 @@ def test_find_similar_notes(zettel_service):
         note_type=NoteType.PERMANENT,
         tags=["python", "data science"]
     )
-    note4 = zettel_service.create_note(
+    zettel_service.create_note(
         title="History of Computing",
         content="Evolution of computing technology.",
         note_type=NoteType.PERMANENT,
         tags=["history", "computing"]
     )
-    
-    # Create links between notes with different types
-    # This ensures we don't have duplicate links of the same type
     zettel_service.create_link(note1.id, note2.id, LinkType.EXTENDS)
     zettel_service.create_link(note1.id, note3.id, LinkType.REFERENCE)
-    
-    # Find similar notes to note1
-    # Setting a lower threshold since the current implementation may have different weights
-    similar_notes = zettel_service.find_similar_notes(note1.id, 0.0)
-    
-    # Verify we get at least one similar note (the exact order may vary)
-    assert len(similar_notes) > 0
-    
-    # Convert to IDs for easier comparison
-    similar_ids = [note_tuple[0].id for note_tuple in similar_notes]
-    
-    # At least one of note2 or note3 should be in the similar notes
-    # (They share tags and/or links with note1)
-    assert note2.id in similar_ids or note3.id in similar_ids
+
+    # Act
+    similar = zettel_service.find_similar_notes(note1.id, 0.0)
+
+    # Assert
+    similar_ids = [n.id for n, _ in similar]
+    assert len(similar) > 0, "Expected at least one similar note"
+    assert note2.id in similar_ids or note3.id in similar_ids, (
+        "At least one linked/shared-tag note should appear in similar results"
+    )
 
 
 def test_export_note_returns_yaml_frontmatter(zettel_service):
-    """export_note output must contain YAML frontmatter matching the on-disk format."""
-    ref = "Ahrens, S. (2017). How to Take Smart Notes."
+    """export_note output contains YAML frontmatter matching the on-disk format."""
+    # Arrange
+    REF = "Ahrens, S. (2017). How to Take Smart Notes."
     note = zettel_service.create_note(
         title="Export Test",
         content="Body text.",
         note_type=NoteType.PERMANENT,
         tags=["export", "test"],
-        references=[ref],
+        references=[REF],
     )
+
+    # Act
     result = zettel_service.export_note(note.id)
 
-    # Parse via python-frontmatter — same library used by the repository
+    # Assert
     post = fm.loads(result)
     assert post.metadata.get("id") == note.id, "id must appear in YAML frontmatter"
-    assert post.metadata.get("type") == "permanent"
-    assert set(post.metadata.get("tags", [])) == {"export", "test"}
-    assert post.metadata.get("references") == [ref]
-    assert "Export Test" in post.content
+    assert post.metadata.get("type") == "permanent", f"Expected type 'permanent', got {post.metadata.get('type')!r}"
+    assert set(post.metadata.get("tags", [])) == {"export", "test"}, f"Tag mismatch: {post.metadata.get('tags')!r}"
+    assert post.metadata.get("references") == [REF], f"References mismatch: {post.metadata.get('references')!r}"
+    assert "Export Test" in post.content, f"Expected 'Export Test' in content: {post.content[:100]!r}"
 
 
 def test_export_note_includes_links_section(zettel_service):
-    """export_note output must include the ## Links section when links exist."""
+    """export_note includes ## Links section when links exist."""
+    # Arrange
     source = zettel_service.create_note(title="Source", content="Source body.")
     target = zettel_service.create_note(title="Target", content="Target body.")
     zettel_service.create_link(source.id, target.id, LinkType.SUPPORTS, "key evidence")
 
+    # Act
     result = zettel_service.export_note(source.id)
 
-    assert "## Links" in result
-    assert f"supports [[{target.id}]]" in result
-    assert "key evidence" in result
+    # Assert
+    assert "## Links" in result, "Export should contain Links section"
+    assert f"supports [[{target.id}]]" in result, f"Expected supports link in export: {result[:200]!r}"
+    assert "key evidence" in result, f"Expected 'key evidence' in export: {result[:200]!r}"
 
 
 def test_export_note_raises_for_missing_id(zettel_service):
-    """export_note must raise ValueError for an unknown note ID."""
+    """export_note raises ValueError for an unknown note ID."""
     with pytest.raises(ValueError, match="not found"):
         zettel_service.export_note("nonexistent-id-000000000")
 
 
 def test_export_note_round_trips(zettel_service):
-    """export_note output must parse back to a note with identical id, tags, links, and references."""
-    ref = "Ahrens, S. (2017). How to Take Smart Notes."
+    """export_note output parses back to a note with identical fields."""
+    # Arrange
+    REF = "Ahrens, S. (2017). How to Take Smart Notes."
     note = zettel_service.create_note(
         title="Round-trip Test",
         content="Body text.",
         note_type=NoteType.PERMANENT,
         tags=["round-trip", "test"],
-        references=[ref],
+        references=[REF],
     )
     target = zettel_service.create_note(title="Target", content="Target body.")
     zettel_service.create_link(note.id, target.id, LinkType.REFERENCE, "key link")
 
+    # Act
     exported = zettel_service.export_note(note.id)
-
-    # Re-parse the exported content via the same parser used for on-disk files
     parsed = zettel_service.repository._parse_note_from_markdown(exported)
-    assert parsed is not None
-    assert parsed.id == note.id
-    assert parsed.note_type == NoteType.PERMANENT
-    assert {t.name for t in parsed.tags} == {"round-trip", "test"}
-    assert parsed.references == [ref]
-    assert len(parsed.links) == 1
-    assert parsed.links[0].target_id == target.id
-    assert parsed.links[0].description == "key link"
+
+    # Assert
+    assert parsed is not None, "Exported markdown should parse back to a Note"
+    assert parsed.id == note.id, f"Round-trip ID mismatch: {parsed.id!r} != {note.id!r}"
+    assert parsed.note_type == NoteType.PERMANENT, f"Round-trip note type mismatch: {parsed.note_type!r}"
+    assert {t.name for t in parsed.tags} == {"round-trip", "test"}, f"Round-trip tag mismatch: {{{', '.join(t.name for t in parsed.tags)}}}"
+    assert parsed.references == [REF], f"Round-trip references mismatch: {parsed.references!r}"
+    assert len(parsed.links) == 1, f"Expected 1 link after round-trip, got {len(parsed.links)}"
+    assert parsed.links[0].target_id == target.id, f"Round-trip link target mismatch: {parsed.links[0].target_id!r}"
+    assert parsed.links[0].description == "key link", f"Round-trip link description mismatch: {parsed.links[0].description!r}"

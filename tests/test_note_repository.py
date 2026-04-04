@@ -26,9 +26,9 @@ def test_create_note_returns_note_with_id_and_all_fields(note_repository):
 
     # Assert — identity
     assert saved.id is not None, "Expected a generated note ID"
-    assert saved.title == "Test Note"
-    assert saved.content == "This is a test note."
-    assert saved.note_type == NoteType.PERMANENT
+    assert saved.title == "Test Note", f"Expected title 'Test Note', got {saved.title!r}"
+    assert saved.content == "This is a test note.", f"Expected content 'This is a test note.', got {saved.content!r}"
+    assert saved.note_type == NoteType.PERMANENT, f"Expected PERMANENT note type, got {saved.note_type}"
     # Assert — tags (order-independent)
     assert {tag.name for tag in saved.tags} == {"test", "example"}, (
         f"Expected tags {{'test', 'example'}}, got {{{', '.join(t.name for t in saved.tags)}}}"
@@ -47,12 +47,14 @@ def test_get_note_returns_file_content_with_title_header(note_repository):
 
     # Assert
     assert retrieved is not None, f"Note {saved.id} was not found after creation"
-    assert retrieved.id == saved.id
-    assert retrieved.title == "Get Test Note"
+    assert retrieved.id == saved.id, f"Expected ID {saved.id}, got {retrieved.id}"
+    assert retrieved.title == "Get Test Note", f"Expected title 'Get Test Note', got {retrieved.title!r}"
     assert retrieved.content.strip() == EXPECTED_CONTENT.strip(), (
         "get() should prepend a '# Title' heading to content"
     )
-    assert {tag.name for tag in retrieved.tags} == {"test", "get"}
+    assert {tag.name for tag in retrieved.tags} == {"test", "get"}, (
+        f"Expected tags {{'test', 'get'}}, got {{{', '.join(t.name for t in retrieved.tags)}}}"
+    )
 
 
 def test_update_note_persists_new_title_content_and_tags(note_repository):
@@ -69,10 +71,14 @@ def test_update_note_persists_new_title_content_and_tags(note_repository):
 
     # Assert — via round-trip read
     retrieved = note_repository.get(saved.id)
-    assert retrieved is not None
-    assert retrieved.title == "Updated Title"
-    assert retrieved.content.strip() == EXPECTED_CONTENT.strip()
-    assert {tag.name for tag in retrieved.tags} == {"new"}
+    assert retrieved is not None, f"Note {saved.id} not found after update"
+    assert retrieved.title == "Updated Title", f"Expected title 'Updated Title', got {retrieved.title!r}"
+    assert retrieved.content.strip() == EXPECTED_CONTENT.strip(), (
+        "Updated content should include title heading"
+    )
+    assert {tag.name for tag in retrieved.tags} == {"new"}, (
+        f"Expected tags {{'new'}}, got {{{', '.join(t.name for t in retrieved.tags)}}}"
+    )
 
 
 def test_delete_note_removes_from_repository(note_repository):
@@ -121,7 +127,7 @@ def test_search_by_title_finds_exact_title_match(note_repository):
 
     # Assert
     assert len(results) == 1, f"Expected 1 result, got {len(results)}: {[n.title for n in results]}"
-    assert results[0].id == js.id
+    assert results[0].id == js.id, f"Expected JavaScript note ID {js.id}, got {results[0].id}"
 
 
 def test_search_by_note_type_filters_correctly(note_repository):
@@ -135,7 +141,7 @@ def test_search_by_note_type_filters_correctly(note_repository):
 
     # Assert
     assert len(results) == 1, f"Expected 1 STRUCTURE note, got {len(results)}"
-    assert results[0].id == structure.id
+    assert results[0].id == structure.id, f"Expected structure note ID {structure.id}, got {results[0].id}"
 
 
 def test_find_by_tag_returns_all_tagged_notes(note_repository):
@@ -183,7 +189,7 @@ def test_references_survive_search(note_repository):
     results = note_repository.search(title="Search Ref Note")
 
     # Assert
-    assert len(results) == 1
+    assert len(results) == 1, f"Expected 1 result for 'Search Ref Note', got {len(results)}"
     assert results[0].references == [AHRENS_REF], (
         f"Expected [{AHRENS_REF!r}], got {results[0].references!r}"
     )
@@ -200,7 +206,7 @@ def test_references_survive_update(note_repository):
     results = note_repository.search(title="Update Ref Note")
 
     # Assert
-    assert len(results) == 1
+    assert len(results) == 1, f"Expected 1 result for 'Update Ref Note', got {len(results)}"
     assert results[0].references == [ECO_REF], (
         f"Expected [{ECO_REF!r}] after update, got {results[0].references!r}"
     )
@@ -264,13 +270,13 @@ def test_create_link_between_notes_is_persisted(note_repository):
     updated = note_repository.update(source)
 
     # Assert — link on returned note
-    assert len(updated.links) == 1
+    assert len(updated.links) == 1, f"Expected 1 link on source, got {len(updated.links)}"
     link = updated.links[0]
-    assert link.target_id == target.id
-    assert link.link_type == LinkType.REFERENCE
-    assert link.description == "A test link"
+    assert link.target_id == target.id, f"Expected link target {target.id}, got {link.target_id}"
+    assert link.link_type == LinkType.REFERENCE, f"Expected REFERENCE link type, got {link.link_type}"
+    assert link.description == "A test link", f"Expected description 'A test link', got {link.description!r}"
 
     # Assert — link survives a fresh read
     linked = note_repository.find_linked_notes(source.id, "outgoing")
     assert len(linked) == 1, f"Expected 1 outgoing note, got {len(linked)}"
-    assert linked[0].id == target.id
+    assert linked[0].id == target.id, f"Expected linked note {target.id}, got {linked[0].id}"

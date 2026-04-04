@@ -31,15 +31,15 @@ def test_search_by_text_returns_ranked_results(zettel_service, search_service):
 
     results = search_service.search_by_text("epistemology")
 
-    assert len(results) == 2
+    assert len(results) == 2, f"Expected 2 results for 'epistemology', got {len(results)}"
     assert results[0].note.id == high_relevance.id, "Higher-frequency match should rank first"
-    assert results[1].note.id == low_relevance.id
-    assert all(r.score > 0 for r in results)
+    assert results[1].note.id == low_relevance.id, f"Expected low-relevance note second, got {results[1].note.id}"
+    assert all(r.score > 0 for r in results), "All BM25 scores should be positive"
 
 
 def test_search_by_text_empty_query(search_service):
     """Empty query must return empty list."""
-    assert search_service.search_by_text("") == []
+    assert search_service.search_by_text("") == [], "Empty query should return empty list"
 
 
 def test_search_by_text_no_matches(zettel_service, search_service):
@@ -50,7 +50,7 @@ def test_search_by_text_no_matches(zettel_service, search_service):
         tags=[]
     )
     results = search_service.search_by_text("xyzzyplugh")
-    assert results == []
+    assert results == [], f"Expected no matches for nonsense query, got {results!r}"
 
 
 def test_search_by_text_include_title_only(zettel_service, search_service):
@@ -67,8 +67,8 @@ def test_search_by_text_include_title_only(zettel_service, search_service):
     )
 
     results = search_service.search_by_text("phenomenology", include_content=False)
-    assert len(results) == 1
-    assert results[0].note.title == "Phenomenology"
+    assert len(results) == 1, f"Expected 1 title-only match, got {len(results)}"
+    assert results[0].note.title == "Phenomenology", f"Expected title 'Phenomenology', got {results[0].note.title!r}"
 
 
 def test_search_by_text_score_is_positive(zettel_service, search_service):
@@ -79,8 +79,8 @@ def test_search_by_text_score_is_positive(zettel_service, search_service):
         tags=[]
     )
     results = search_service.search_by_text("hermeneutics")
-    assert len(results) == 1
-    assert results[0].score > 0
+    assert len(results) == 1, f"Expected 1 result for 'hermeneutics', got {len(results)}"
+    assert results[0].score > 0, f"Score should be positive, got {results[0].score}"
 
 
 def test_search_by_text_fts_special_chars_do_not_crash(zettel_service, search_service):
@@ -91,9 +91,9 @@ def test_search_by_text_fts_special_chars_do_not_crash(zettel_service, search_se
         tags=[]
     )
     # These would crash without escaping — verify no exception and a list is returned
-    assert isinstance(search_service.search_by_text("AND OR NOT"), list)
-    assert isinstance(search_service.search_by_text('say "hello"'), list)
-    assert isinstance(search_service.search_by_text("*wildcard"), list)
+    assert isinstance(search_service.search_by_text("AND OR NOT"), list), "FTS5 operators in query should return a list, not crash"
+    assert isinstance(search_service.search_by_text('say "hello"'), list), "Quoted strings in query should return a list, not crash"
+    assert isinstance(search_service.search_by_text("*wildcard"), list), "Wildcard prefix in query should return a list, not crash"
 
 
 def test_search_combined_text_uses_bm25(zettel_service, search_service):
@@ -113,9 +113,9 @@ def test_search_combined_text_uses_bm25(zettel_service, search_service):
 
     results = search_service.search_combined(query_text="ontology", tags=["philosophy"])
 
-    assert len(results) == 2
+    assert len(results) == 2, f"Expected 2 combined results for 'ontology', got {len(results)}"
     assert results[0].note.id == note_a.id, "Higher BM25 score should rank first"
-    assert all(r.score > 0 for r in results)
+    assert all(r.score > 0 for r in results), "All combined search scores should be positive"
 
 
 def test_search_combined_no_text_still_works(zettel_service, search_service):
@@ -129,9 +129,9 @@ def test_search_combined_no_text_still_works(zettel_service, search_service):
 
     results = search_service.search_combined(tags=["unique-tag-xyz"])
 
-    assert len(results) == 1
-    assert results[0].note.id == note.id
-    assert results[0].score == 1.0
+    assert len(results) == 1, f"Expected 1 result for unique tag, got {len(results)}"
+    assert results[0].note.id == note.id, f"Expected note ID {note.id}, got {results[0].note.id}"
+    assert results[0].score == 1.0, f"Expected default score 1.0 without text query, got {results[0].score}"
 
 
 def test_search_by_text_fts5_operational_error_returns_empty(zettel_service, search_service):
@@ -144,7 +144,7 @@ def test_search_by_text_fts5_operational_error_returns_empty(zettel_service, sea
         mock_session.execute.side_effect = fts5_err
         mock_sf.return_value = mock_session
         result = search_service.search_by_text("test query")
-    assert result == []
+    assert result == [], f"FTS5 OperationalError should return empty list, got {result!r}"
 
 
 def test_search_by_text_non_fts5_operational_error_reraises(zettel_service, search_service):
@@ -202,8 +202,8 @@ def test_search_combined_fts5_operational_error_returns_metadata_fallback(zettel
                     query_text="fallback query", tags=["fallback-tag"]
                 )
 
-    assert isinstance(result, list)
+    assert isinstance(result, list), f"Expected list from fallback, got {type(result)}"
     assert len(result) >= 1, "Fallback must return at least the metadata-matched note"
-    assert all(r.score == 0.0 for r in result)
-    assert all("text search unavailable" in r.matched_context for r in result)
-    assert all(r.matched_terms == set() for r in result)
+    assert all(r.score == 0.0 for r in result), "Fallback results should have score 0.0"
+    assert all("text search unavailable" in r.matched_context for r in result), "Fallback context should mention text search unavailable"
+    assert all(r.matched_terms == set() for r in result), "Fallback results should have empty matched_terms"
