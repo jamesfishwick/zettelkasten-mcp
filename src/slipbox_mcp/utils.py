@@ -1,7 +1,6 @@
 """Utility functions for the Zettelkasten MCP server."""
 import logging
 import sys
-from datetime import datetime
 from typing import Optional
 
 def setup_logging(level: str = "INFO", log_file: Optional[str] = None):
@@ -50,26 +49,3 @@ def format_tags(tags: list) -> str:
     """Format a list of Tag objects as a comma-separated string."""
     return ", ".join(tag.name for tag in tags)
 
-def format_note_for_display(title: str, id: str, content: str, tags: list[str],
-                          created_at: datetime, updated_at: datetime,
-                          links: Optional[list] = None) -> str:
-    """Format a note for display in the console."""
-    result = f"# {title}\n"
-    result += f"ID: {id}\n"
-    result += f"Created: {created_at.isoformat()}\n"
-    result += f"Updated: {updated_at.isoformat()}\n"
-
-    if tags:
-        result += f"Tags: {', '.join(tags)}\n"
-
-    result += f"\n{content}\n"
-
-    if links:
-        result += "\n## Links\n"
-        for link in links:
-            if hasattr(link, "description") and link.description:
-                result += f"- {link.link_type.value}: {link.target_id} - {link.description}\n"
-            else:
-                result += f"- {link.link_type.value}: {link.target_id}\n"
-
-    return result
