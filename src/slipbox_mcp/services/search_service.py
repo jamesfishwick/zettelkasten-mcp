@@ -108,95 +108,11 @@ class SearchService:
 
     def find_orphaned_notes(self) -> List[Note]:
         """Find notes with no incoming or outgoing links."""
-        orphans = []
-
-        with self.zettel_service.repository.session_factory() as session:
-            notes_with_links = (
-                select(DBNote.id)
-                .outerjoin(DBLink, or_(
-                    DBNote.id == DBLink.source_id,
-                    DBNote.id == DBLink.target_id
-                ))
-                .where(or_(
-                    DBLink.source_id.is_not(None),
-                    DBLink.target_id.is_not(None),
-                ))
-                .subquery()
-            )
-
-            query = (
-                select(DBNote)
-                .options(*_NOTE_EAGER_LOADS)
-                .where(DBNote.id.not_in(select(notes_with_links)))
-            )
-
-            result = session.execute(query)
-            orphaned_db_notes = result.unique().scalars().all()
-
-            # Convert DB notes directly — relationships were eager-loaded above,
-            # so no per-note file I/O is needed.
-            repository = self.zettel_service.repository
-            for db_note in orphaned_db_notes:
-                orphans.append(repository._db_note_to_note(db_note))
-
-        return orphans
+        return self.zettel_service.repository.find_orphaned_notes()
 
     def find_central_notes(self, limit: int = 10) -> List[Tuple[Note, int]]:
         """Find notes with the most connections (incoming + outgoing links)."""
-        repository = self.zettel_service.repository
-
-        with repository.session_factory() as session:
-            cte_sql = text("""
-            WITH outgoing AS (
-                SELECT source_id as note_id, COUNT(*) as outgoing_count
-                FROM links
-                GROUP BY source_id
-            ),
-            incoming AS (
-                SELECT target_id as note_id, COUNT(*) as incoming_count
-                FROM links
-                GROUP BY target_id
-            )
-            SELECT n.id,
-                (COALESCE(o.outgoing_count, 0) + COALESCE(i.incoming_count, 0)) as total
-            FROM notes n
-            LEFT JOIN outgoing o ON n.id = o.note_id
-            LEFT JOIN incoming i ON n.id = i.note_id
-            WHERE (COALESCE(o.outgoing_count, 0) + COALESCE(i.incoming_count, 0)) > 0
-            ORDER BY total DESC
-            LIMIT :limit
-            """)
-
-            ranked_rows = session.execute(cte_sql, {"limit": limit}).all()
-            if not ranked_rows:
-                return []
-
-            # Map note_id -> total for O(1) lookup after batch-load.
-            rank_map = {row.id: row.total for row in ranked_rows}
-            ordered_ids = [row.id for row in ranked_rows]
-
-            db_notes_query = (
-                select(DBNote)
-                .where(DBNote.id.in_(ordered_ids))
-                .options(*_NOTE_EAGER_LOADS)
-            )
-            db_notes_by_id = {
-                db_note.id: db_note
-                for db_note in session.execute(db_notes_query).unique().scalars().all()
-            }
-
-        result = []
-        for note_id in ordered_ids:
-            db_note = db_notes_by_id.get(note_id)
-            if db_note is None:
-                logger.warning(
-                    "find_central_notes: note '%s' found in links table but missing "
-                    "from notes table (referential integrity violation); skipping",
-                    note_id,
-                )
-                continue
-            result.append((repository._db_note_to_note(db_note), rank_map[note_id]))
-        return result
+        return self.zettel_service.repository.find_central_notes(limit)
 
     def find_notes_by_date_range(
         self,
