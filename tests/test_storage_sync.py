@@ -104,3 +104,28 @@ class TestUpdateAtomicity:
 
         # File should be reverted to original
         assert file_path.read_text() == original_content
+
+
+class TestLockScope:
+    """Verify file_lock covers both file and DB operations."""
+
+    def test_create_holds_lock_during_db_write(self, note_repository):
+        """file_lock should be held during _index_note, not just file write."""
+        lock_held_during_index = []
+
+        original_index = note_repository._index_note
+
+        def tracking_index(note):
+            lock_held_during_index.append(note_repository.file_lock.locked())
+            return original_index(note)
+
+        note = Note(
+            title="Lock Scope Test",
+            content="Testing lock scope.",
+            note_type=NoteType.PERMANENT,
+        )
+
+        with patch.object(note_repository, "_index_note", side_effect=tracking_index):
+            note_repository.create(note)
+
+        assert lock_held_during_index == [True], "file_lock was not held during DB indexing"

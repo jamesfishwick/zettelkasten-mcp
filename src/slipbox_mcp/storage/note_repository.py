@@ -417,22 +417,20 @@ class NoteRepository(Repository[Note]):
             note.id = generate_id()
 
         markdown = self.note_to_markdown(note)
-
         file_path = self.notes_dir / f"{note.id}.md"
-        try:
-            with self.file_lock:
+
+        with self.file_lock:
+            try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(markdown)
-        except IOError as e:
-            raise IOError(f"Failed to write note to {file_path}: {e}")
+            except IOError as e:
+                raise IOError(f"Failed to write note to {file_path}: {e}")
 
-        try:
-            self._index_note(note)
-        except Exception:
-            # Roll back file write to maintain consistency
-            with self.file_lock:
+            try:
+                self._index_note(note)
+            except Exception:
                 file_path.unlink(missing_ok=True)
-            raise
+                raise
 
         return note
 
@@ -477,57 +475,50 @@ class NoteRepository(Repository[Note]):
         note.updated_at = datetime.datetime.now()
 
         file_path = self.notes_dir / f"{note.id}.md"
+        markdown = self.note_to_markdown(note)
 
-        # Capture original content for rollback
         with self.file_lock:
             original_content = file_path.read_text(encoding="utf-8")
 
-        markdown = self.note_to_markdown(note)
-
-        try:
-            with self.file_lock:
+            try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(markdown)
-        except IOError as e:
-            raise IOError(f"Failed to write note to {file_path}: {e}")
+            except IOError as e:
+                raise IOError(f"Failed to write note to {file_path}: {e}")
 
-        try:
-            with self.session_factory() as session:
-                db_note = session.scalar(select(DBNote).where(DBNote.id == note.id))
-                if db_note:
-                    db_note.title = note.title
-                    db_note.content = note.content
-                    db_note.note_type = note.note_type.value
-                    db_note.references = note.references
-                    db_note.updated_at = note.updated_at
+            try:
+                with self.session_factory() as session:
+                    db_note = session.scalar(select(DBNote).where(DBNote.id == note.id))
+                    if db_note:
+                        db_note.title = note.title
+                        db_note.content = note.content
+                        db_note.note_type = note.note_type.value
+                        db_note.references = note.references
+                        db_note.updated_at = note.updated_at
 
-                    db_note.tags = []
-                    for tag in note.tags:
-                        db_note.tags.append(self._get_or_create_tag(session, tag.name))
+                        db_note.tags = []
+                        for tag in note.tags:
+                            db_note.tags.append(self._get_or_create_tag(session, tag.name))
 
-                    # Delete-and-replace links rather than merging to avoid stale entries.
-                    session.execute(delete(DBLink).where(DBLink.source_id == note.id))
+                        session.execute(delete(DBLink).where(DBLink.source_id == note.id))
 
-                    for link in note.links:
-                        db_link = DBLink(
-                            source_id=link.source_id,
-                            target_id=link.target_id,
-                            link_type=link.link_type.value,
-                            description=link.description,
-                            created_at=link.created_at
-                        )
-                        session.add(db_link)
+                        for link in note.links:
+                            db_link = DBLink(
+                                source_id=link.source_id,
+                                target_id=link.target_id,
+                                link_type=link.link_type.value,
+                                description=link.description,
+                                created_at=link.created_at
+                            )
+                            session.add(db_link)
 
-                    session.commit()
-                else:
-                    # File exists but DB row is missing — re-index to recover.
-                    self._index_note(note)
-        except Exception:
-            # Roll back file to original content
-            with self.file_lock:
+                        session.commit()
+                    else:
+                        self._index_note(note)
+            except Exception:
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(original_content)
-            raise
+                raise
 
         return note
 
@@ -537,23 +528,21 @@ class NoteRepository(Repository[Note]):
         if not file_path.exists():
             raise ValueError(f"Note with ID {id} does not exist")
 
-        try:
-            with self.file_lock:
+        with self.file_lock:
+            try:
                 os.remove(file_path)
-        except IOError as e:
-            raise IOError(f"Failed to delete note {id}: {e}")
+            except IOError as e:
+                raise IOError(f"Failed to delete note {id}: {e}")
 
-        # Cascade on DBNote handles outgoing_links and incoming_links;
-        # the note_tags association table rows are removed via FK.
-        try:
-            with self.session_factory() as session:
-                db_note = session.get(DBNote, id)
-                if db_note:
-                    session.delete(db_note)
-                    session.commit()
-        except Exception as e:
-            logger.error("File deleted but DB cleanup failed for note %s: %s", id, e)
-            raise
+            try:
+                with self.session_factory() as session:
+                    db_note = session.get(DBNote, id)
+                    if db_note:
+                        session.delete(db_note)
+                        session.commit()
+            except Exception as e:
+                logger.error("File deleted but DB cleanup failed for note %s: %s", id, e)
+                raise
 
     def search(self, **kwargs: Any) -> List[Note]:
         """Search for notes based on criteria."""
