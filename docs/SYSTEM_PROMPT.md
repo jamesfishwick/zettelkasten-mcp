@@ -127,6 +127,12 @@ Use `zk_get_cluster_report` to find clusters needing structure notes.
 3. Create notes for novel ideas, skipping duplicates
 4. Link the batch to each other and to existing knowledge
 
+**Analyzing and improving a note:**
+
+1. Use the `analyze_note` prompt to evaluate atomicity, connectivity, and clarity
+2. Search for related notes based on the analysis (`zk_search_notes`)
+3. Create links, update tags, or split the note based on recommendations
+
 **Maintenance:**
 
 1. Integrate isolated notes (`zk_find_orphaned_notes`)

@@ -251,6 +251,7 @@ MCP prompts are reusable workflow templates that encode the Zettelkasten method 
 | `knowledge_creation_batch` | Process larger volumes into 5-10 notes | Processing books or long-form content |
 | `knowledge_exploration` | Map connections to existing knowledge | Exploring how topics relate |
 | `knowledge_synthesis` | Create higher-order insights | Finding bridges between ideas |
+| `analyze_note` | Evaluate a note's fitness for the slipbox | Reviewing a new or existing note |
 | `cluster_maintenance` | Surface pending housekeeping | Start of a working session |
 
 ### How to Use Prompts
@@ -262,6 +263,7 @@ MCP prompts are reusable workflow templates that encode the Zettelkasten method 
 /mcp__slipbox-mcp__knowledge_exploration
 /mcp__slipbox-mcp__knowledge_synthesis
 /mcp__slipbox-mcp__knowledge_creation_batch
+/mcp__slipbox-mcp__analyze_note
 /mcp__slipbox-mcp__cluster_maintenance
 ```
 
