@@ -8,9 +8,11 @@ creation and linking via Claude) with quick terminal access.
 Philosophy: The CLI handles *what exists*. The agent handles *what should exist*.
 """
 import argparse
+import os
 import signal
 import sys
 from datetime import datetime
+from pathlib import Path
 
 # Handle broken pipe gracefully (e.g., when piping to head)
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -171,6 +173,7 @@ def main():
         prog="slipbox",
         description="Zettelkasten CLI for maintenance and inspection"
     )
+    parser.add_argument("--base-dir", type=str, help="Path to slipbox data directory")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # status
@@ -201,6 +204,16 @@ def main():
     subparsers.add_parser("tags", help="List all tags with counts")
 
     args = parser.parse_args()
+
+    from slipbox_mcp.config import config
+
+    if args.base_dir:
+        config.base_dir = Path(args.base_dir)
+    elif config.base_dir == Path(".") and not os.getenv("SLIPBOX_BASE_DIR"):
+        print(
+            "Warning: No --base-dir or SLIPBOX_BASE_DIR set. Using current directory.",
+            file=sys.stderr,
+        )
 
     commands = {
         "status": cmd_status,
