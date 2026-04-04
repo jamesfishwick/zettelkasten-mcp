@@ -15,24 +15,24 @@ find src -name '*.py' | sort | head -20
 
 ```output
 src/__init__.py
-src/zettelkasten_mcp/__init__.py
-src/zettelkasten_mcp/cli.py
-src/zettelkasten_mcp/config.py
-src/zettelkasten_mcp/dev.py
-src/zettelkasten_mcp/main.py
-src/zettelkasten_mcp/models/__init__.py
-src/zettelkasten_mcp/models/db_models.py
-src/zettelkasten_mcp/models/schema.py
-src/zettelkasten_mcp/server/__init__.py
-src/zettelkasten_mcp/server/mcp_server.py
-src/zettelkasten_mcp/services/__init__.py
-src/zettelkasten_mcp/services/cluster_service.py
-src/zettelkasten_mcp/services/search_service.py
-src/zettelkasten_mcp/services/zettel_service.py
-src/zettelkasten_mcp/storage/__init__.py
-src/zettelkasten_mcp/storage/base.py
-src/zettelkasten_mcp/storage/note_repository.py
-src/zettelkasten_mcp/utils.py
+src/slipbox_mcp/__init__.py
+src/slipbox_mcp/cli.py
+src/slipbox_mcp/config.py
+src/slipbox_mcp/dev.py
+src/slipbox_mcp/main.py
+src/slipbox_mcp/models/__init__.py
+src/slipbox_mcp/models/db_models.py
+src/slipbox_mcp/models/schema.py
+src/slipbox_mcp/server/__init__.py
+src/slipbox_mcp/server/mcp_server.py
+src/slipbox_mcp/services/__init__.py
+src/slipbox_mcp/services/cluster_service.py
+src/slipbox_mcp/services/search_service.py
+src/slipbox_mcp/services/zettel_service.py
+src/slipbox_mcp/storage/__init__.py
+src/slipbox_mcp/storage/base.py
+src/slipbox_mcp/storage/note_repository.py
+src/slipbox_mcp/utils.py
 ```
 
 ## Test Suite
@@ -97,7 +97,7 @@ The SQLite FTS5 index enables BM25-ranked full-text search with BM25 ranking. Re
 
 ```bash
 uv run python - <<'PYEOF'
-from zettelkasten_mcp.services.search_service import SearchService
+from slipbox_mcp.services.search_service import SearchService
 
 svc = SearchService()
 results = svc.search_by_text('zettelkasten')
@@ -128,7 +128,7 @@ Central notes have the most inbound and outbound links — they are the structur
 
 ```bash
 uv run python - <<'PYEOF'
-from zettelkasten_mcp.services.search_service import SearchService
+from slipbox_mcp.services.search_service import SearchService
 svc = SearchService()
 central = svc.find_central_notes(limit=5)
 for n, count in central:
@@ -150,7 +150,7 @@ Notes with no links are candidates for connection — or deletion:
 
 ```bash
 uv run python - <<'PYEOF'
-from zettelkasten_mcp.services.search_service import SearchService
+from slipbox_mcp.services.search_service import SearchService
 svc = SearchService()
 orphans = svc.find_orphaned_notes()
 print(f'Found {len(orphans)} orphaned notes:\n')
@@ -175,7 +175,7 @@ The cluster detector finds groups of co-occurring tags that lack a structure not
 
 ```bash
 uv run python - <<'PYEOF'
-from zettelkasten_mcp.services.cluster_service import ClusterService
+from slipbox_mcp.services.cluster_service import ClusterService
 svc = ClusterService()
 report = svc.detect_clusters()
 print(f'Clusters detected: {len(report.clusters)}\n')
@@ -214,7 +214,7 @@ Data Architecture Knowledge Map
 When connected to Claude Desktop, the server exposes these tools:
 
 ```bash
-grep 'def zk_' src/zettelkasten_mcp/server/mcp_server.py | sed 's/.*def //' | sed 's/(.*//' | sed 's/^/  /'
+grep 'def zk_' src/slipbox_mcp/server/mcp_server.py | sed 's/.*def //' | sed 's/(.*//' | sed 's/^/  /'
 ```
 
 ```output

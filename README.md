@@ -243,7 +243,7 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 
 ## Prompts Reference
 
-MCP prompts are workflow templates accessible via Claude's prompt picker.
+MCP prompts are reusable workflow templates that encode the Zettelkasten method so you don't re-explain it every session.
 
 | Prompt | Description | Use When |
 |--------|-------------|----------|
@@ -251,16 +251,31 @@ MCP prompts are workflow templates accessible via Claude's prompt picker.
 | `knowledge_creation_batch` | Process larger volumes into 5-10 notes | Processing books or long-form content |
 | `knowledge_exploration` | Map connections to existing knowledge | Exploring how topics relate |
 | `knowledge_synthesis` | Create higher-order insights | Finding bridges between ideas |
+| `cluster_maintenance` | Surface pending housekeeping | Start of a working session |
 
-### Example Usage
+### How to Use Prompts
 
-In Claude Desktop, select a prompt from the prompt picker, then provide the required input:
+**Claude Code** supports prompts natively as slash commands:
 
-**knowledge_creation**: Paste an article or your notes, get atomic notes with links.
+```
+/mcp__slipbox-mcp__knowledge_creation
+/mcp__slipbox-mcp__knowledge_exploration
+/mcp__slipbox-mcp__knowledge_synthesis
+/mcp__slipbox-mcp__knowledge_creation_batch
+/mcp__slipbox-mcp__cluster_maintenance
+```
 
-**knowledge_exploration**: Enter a topic to map its connections.
+**Claude Desktop** does not have a prompt picker UI. Invoke prompts conversationally:
 
-**knowledge_synthesis**: Provide context to spark connections between unrelated areas.
+```
+Use the knowledge_creation prompt with this content: [paste text]
+
+Use the knowledge_exploration prompt for the topic: "poetry and cognitive load"
+
+Use the cluster_maintenance prompt.
+```
+
+Claude will call the prompt template behind the scenes and fill in your input.
 
 ---
 
