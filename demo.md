@@ -321,7 +321,30 @@ Capture this as a permanent note and find related notes to link it to.
 
 ---
 
-### 6. Source Decomposition: Article → Atomic Notes
+### 6. Analyze and Improve a Note
+
+**What to say:**
+```
+Use the analyze_note prompt with this note:
+
+"Luhmann's slip-box worked because the constraints forced understanding.
+You can't write an atomic note without decomposing what you read. You
+can't link it without understanding how it relates to what you already know.
+The method is a thinking tool disguised as a filing system. But most digital
+implementations miss this — they optimize for capture speed instead of
+integration depth. The real bottleneck was never writing notes down."
+```
+
+Or for an existing note:
+```
+Use the analyze_note prompt to evaluate note 20250612T110722584258000.
+```
+
+**What it shows:** Claude evaluates the note across five dimensions: atomicity (is it one idea?), connectivity (what should it link to, grounded in actual search results), clarity (rewritten version), metadata (tags from existing taxonomy, title, type), and emergent insights (gaps and unexpected connections). This is the quality gate — it turns rough captures into well-integrated permanent notes.
+
+---
+
+### 7. Source Decomposition: Article → Atomic Notes
 
 **What to say:**
 ```
@@ -343,7 +366,7 @@ moment of connection, not in the moment of highlight."
 
 ---
 
-### 7. Conversation Distillation: Dialogue → Notes
+### 8. Conversation Distillation: Dialogue → Notes
 
 **What to say (after a substantive discussion):**
 ```
@@ -363,7 +386,7 @@ This demonstrates that the user controls what gets captured. Claude proposes; th
 
 ---
 
-### 8. Finding Similar Notes
+### 9. Finding Similar Notes
 
 **What to say:**
 ```
@@ -374,7 +397,7 @@ Find notes similar to [paste an ID from the central notes output].
 
 ---
 
-### 9. Cluster Detection
+### 10. Cluster Detection
 
 **What to say:**
 ```
@@ -392,7 +415,7 @@ Run zk_refresh_clusters and then show me the report.
 
 ---
 
-### 10. Creating a Structure Note from a Cluster (the big demo moment)
+### 11. Creating a Structure Note from a Cluster (the big demo moment)
 
 **What to say:**
 ```
@@ -403,7 +426,7 @@ Take the highest-scoring cluster and create a structure note for it. Link it to 
 
 ---
 
-### 11. Browsing by Date
+### 12. Browsing by Date
 
 **What to say:**
 ```
@@ -419,7 +442,7 @@ List notes created between 2026-01-01 and 2026-03-01.
 
 ---
 
-### 12. Tag Taxonomy
+### 13. Tag Taxonomy
 
 **What to say:**
 ```
@@ -434,7 +457,7 @@ Before creating any new notes, check the existing tags and tell me which ones ar
 
 ---
 
-### 13. Guided Workflows via Prompts
+### 14. Guided Workflows via Prompts
 
 These workflows process *your content* into the Zettelkasten. They are not content generators.
 
@@ -444,6 +467,7 @@ These workflows process *your content* into the Zettelkasten. They are not conte
 /mcp__slipbox-mcp__knowledge_exploration
 /mcp__slipbox-mcp__knowledge_synthesis
 /mcp__slipbox-mcp__knowledge_creation_batch
+/mcp__slipbox-mcp__analyze_note
 /mcp__slipbox-mcp__cluster_maintenance
 ```
 
@@ -484,6 +508,16 @@ Use the knowledge_synthesis prompt to find bridges between my notes on
 
 Looks for connections you haven't made yet, resolves contradictions, creates synthesis notes that emerge from *your* existing knowledge — not generated from nothing.
 
+**`analyze_note`** — Evaluate and improve a note before or after adding it:
+
+```text
+Use the analyze_note prompt with this note:
+
+[paste note content or provide a note ID]
+```
+
+Checks atomicity, searches for real connections in your existing graph, suggests tags from your taxonomy, rewrites for clarity, and surfaces emergent insights. The quality gate between capture and integration.
+
 **`cluster_maintenance`** — Proactive housekeeping:
 
 ```text
@@ -494,7 +528,7 @@ Reports clusters that have grown large enough to need structure notes. Good for 
 
 ---
 
-### 14. Index Rebuild
+### 15. Index Rebuild
 
 **What to say:**
 
@@ -515,3 +549,69 @@ Rebuild the database index from the markdown files.
 - **Cluster detection** is the intelligence layer: it finds the topics your knowledge has grown into that still lack organizing structure.
 - **Plain markdown files** mean zero lock-in. The DB is an index, not the source of truth.
 - **MCP prompts** are reusable workflows that process input, not content generators. They encode the Zettelkasten method so you don't have to re-explain it every session.
+
+---
+
+## Screenshot Guide for README
+
+Capture these 10 screenshots during a demo run. Each one tells a specific part of the story.
+
+### 1. Proactive Maintenance Prompt (Section 1)
+
+**Capture:** Claude's response after checking `slipbox://maintenance-status` — showing pending clusters with scores, note counts, and action options.
+
+**Why:** Shows Claude acting as a proactive knowledge manager, not a passive assistant. This is the first thing people see and it differentiates slipbox from a note-taking app.
+
+### 2. FTS5 Search Results (Section 2)
+
+**Capture:** Search results for a query across 550+ notes — showing ranked results with tags, dates, and content previews.
+
+**Why:** Demonstrates speed and relevance ranking. BM25 on a real knowledge base, not a toy example.
+
+### 3. Central Notes / Knowledge Hubs (Section 3)
+
+**Capture:** Top 5-10 most-connected notes with link counts. The higher the count, the more structurally important the note.
+
+**Why:** Makes the "graph, not folder" concept tangible. These are the notes everything else orbits.
+
+### 4. Direct Idea Capture (Section 5)
+
+**Capture:** The user's raw paragraph of thinking, then Claude's response: formatted note with title, tags from existing taxonomy, and links to related notes it found.
+
+**Why:** The core value proposition for personal use. Your ideas, Claude's formatting and integration. The money shot.
+
+### 5. Note Analysis (Section 6)
+
+**Capture:** Claude's analysis of a note showing the atomicity check, connectivity table (existing notes with suggested link types), tag suggestions from existing taxonomy, and rewritten version.
+
+**Why:** Shows the quality gate between rough capture and polished knowledge. Claude doesn't just store — it improves.
+
+### 6. Source Decomposition (Section 7)
+
+**Capture:** An article excerpt being split into 2-3 atomic literature notes, each with proper citation, tags, and links to existing knowledge.
+
+**Why:** Shows the content processing pipeline. Input: wall of text. Output: structured, linked, searchable knowledge.
+
+### 7. Cluster Detection Report (Section 10)
+
+**Capture:** Cluster analysis output showing 2-3 scored clusters with tags, note counts, orphan ratios, and suggested titles.
+
+**Why:** This is the intelligence layer. The system finds emergent structure in your notes that you didn't plan.
+
+### 8. Structure Note Creation (Section 11)
+
+**Capture:** `zk_create_structure_from_cluster` output: structure note created, N/N member notes linked, cluster dismissed.
+
+**Why:** The payoff of cluster detection. One command turns an emergent pattern into organized knowledge. The "big demo moment."
+
+### 9. Raw Markdown File (n/a)
+
+**Capture:** A `.md` note file open in Obsidian, VS Code, or a text editor — showing YAML frontmatter (id, title, type, tags, created), content, and `## Links` section with typed links.
+
+**Why:** Proves the zero lock-in story. These are just files. The DB is an index, not the source of truth. Anyone can read them.
+
+### 10. Orphaned Notes (Section 4)
+
+**Capture:** List of unconnected notes, then Claude's follow-up suggesting which existing notes each orphan should connect to.
+
+**Why:** Shows knowledge hygiene. Unintegrated notes are waste — the system surfaces them so nothing falls through the cracks.
