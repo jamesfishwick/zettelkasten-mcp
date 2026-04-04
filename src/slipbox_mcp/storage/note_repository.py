@@ -21,6 +21,83 @@ from slipbox_mcp.storage.base import Repository
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Markdown parsing helpers (module-level, no instance state needed)
+# ---------------------------------------------------------------------------
+
+def _parse_frontmatter_tags(raw: Any) -> list[Tag]:
+    """Parse tags from frontmatter value (str, list, or None)."""
+    if isinstance(raw, str):
+        tag_names = [t.strip() for t in raw.split(",") if t.strip()]
+    elif isinstance(raw, list):
+        tag_names = [str(t).strip() for t in raw if str(t).strip()]
+    else:
+        return []
+    return [Tag(name=name) for name in tag_names]
+
+
+def _parse_links_section(content: str, source_id: str) -> list[Link]:
+    """Parse the ``## Links`` block from note content."""
+    links: list[Link] = []
+    in_links = False
+    for line in content.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("## Links"):
+            in_links = True
+            continue
+        if in_links and stripped.startswith("## "):
+            in_links = False
+            continue
+        if in_links and stripped.startswith("- "):
+            try:
+                if "[[" in stripped and "]]" in stripped:
+                    parts = stripped.split("[[", 1)
+                    link_type_str = parts[0].strip()
+                    if link_type_str.startswith("- "):
+                        link_type_str = link_type_str[2:].strip()
+                    id_and_desc = parts[1].split("]]", 1)
+                    target_id = id_and_desc[0].strip()
+                    description = None
+                    if len(id_and_desc) > 1:
+                        description = id_and_desc[1].strip()
+                    try:
+                        link_type = LinkType(link_type_str)
+                    except ValueError:
+                        link_type = LinkType.REFERENCE
+                    links.append(
+                        Link(
+                            source_id=source_id,
+                            target_id=target_id,
+                            link_type=link_type,
+                            description=description,
+                            created_at=datetime.datetime.now(),
+                        )
+                    )
+            except Exception as e:
+                logger.error("Error parsing link: %s - %s", line, e)
+    return links
+
+
+def _parse_frontmatter_dates(
+    metadata: dict[str, Any],
+) -> tuple[datetime.datetime, datetime.datetime]:
+    """Parse created/updated datetimes from frontmatter metadata."""
+    created_str = metadata.get("created")
+    created_at = (
+        datetime.datetime.fromisoformat(created_str)
+        if created_str
+        else datetime.datetime.now()
+    )
+    updated_str = metadata.get("updated")
+    updated_at = (
+        datetime.datetime.fromisoformat(updated_str)
+        if updated_str
+        else created_at
+    )
+    return created_at, updated_at
+
+
 # Eager-load options applied to every DBNote query to avoid N+1 queries on
 # tags, outgoing links, and incoming links.
 _NOTE_EAGER_LOADS = [
@@ -127,13 +204,11 @@ class NoteRepository(Repository[Note]):
 
         note_id = metadata.get("id")
         if not note_id:
-            # Skip files without IDs (documentation, templates, etc.)
             return None
 
         title = metadata.get("title")
         if not title:
-            lines = post.content.strip().split("\n")
-            for line in lines:
+            for line in post.content.strip().split("\n"):
                 if line.startswith("# "):
                     title = line[2:].strip()
                     break
@@ -146,68 +221,9 @@ class NoteRepository(Repository[Note]):
         except ValueError:
             note_type = NoteType.PERMANENT
 
-        tags_str = metadata.get("tags", "")
-        if isinstance(tags_str, str):
-            tag_names = [t.strip() for t in tags_str.split(",") if t.strip()]
-        elif isinstance(tags_str, list):
-            tag_names = [str(t).strip() for t in tags_str if str(t).strip()]
-        else:
-            tag_names = []
-        tags = [Tag(name=name) for name in tag_names]
-
-        links = []
-        links_section = False
-        for line in post.content.split("\n"):
-            line = line.strip()
-            if line.startswith("## Links"):
-                links_section = True
-                continue
-            if links_section and line.startswith("## "):
-                links_section = False
-                continue
-            if links_section and line.startswith("- "):
-                try:
-                    # Example format: - reference [[202101010000]] Optional description
-                    line_content = line.strip()
-                    if "[[" in line_content and "]]" in line_content:
-                        parts = line_content.split("[[", 1)
-                        link_type_str = parts[0].strip()
-                        if link_type_str.startswith("- "):
-                            link_type_str = link_type_str[2:].strip()
-                        id_and_description = parts[1].split("]]", 1)
-                        target_id = id_and_description[0].strip()
-                        description = None
-                        if len(id_and_description) > 1:
-                            description = id_and_description[1].strip()
-                        try:
-                            link_type = LinkType(link_type_str)
-                        except ValueError:
-                            # If not a valid type, default to reference
-                            link_type = LinkType.REFERENCE
-                        links.append(
-                            Link(
-                                source_id=note_id,
-                                target_id=target_id,
-                                link_type=link_type,
-                                description=description,
-                                created_at=datetime.datetime.now()
-                            )
-                        )
-                except Exception as e:
-                    logger.error("Error parsing link: %s - %s", line, e)
-
-        created_str = metadata.get("created")
-        created_at = (
-            datetime.datetime.fromisoformat(created_str)
-            if created_str
-            else datetime.datetime.now()
-        )
-        updated_str = metadata.get("updated")
-        updated_at = (
-            datetime.datetime.fromisoformat(updated_str)
-            if updated_str
-            else created_at
-        )
+        tags = _parse_frontmatter_tags(metadata.get("tags", ""))
+        links = _parse_links_section(post.content, source_id=note_id)
+        created_at, updated_at = _parse_frontmatter_dates(metadata)
 
         refs_raw = metadata.get("references", [])
         if isinstance(refs_raw, list):
