@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "slipbox": {
+      "command": "python",
+      "args": ["-m", "slipbox_mcp"],
+      "env": {
+        "SLIPBOX_NOTES_DIR": "SET_BY_EVAL_RUNNER",
+        "SLIPBOX_DATABASE_PATH": "SET_BY_EVAL_RUNNER"
+      }
+    }
+  }
+}
