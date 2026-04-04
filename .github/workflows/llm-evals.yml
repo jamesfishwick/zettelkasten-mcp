@@ -1,0 +1,22 @@
+name: LLM Evals
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/slipbox_mcp/server/descriptions.py
+      - src/slipbox_mcp/server/prompts.py
+      - evals/llm/**
+      - evals/seed_data.py
+      - evals/conftest.py
+
+jobs:
+  llm-evals:
+    runs-on: self-hosted
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: uv venv && uv pip install -e ".[dev]"
+      - name: Run LLM evals
+        run: source .venv/bin/activate && pytest evals/llm/ -v --tb=short
