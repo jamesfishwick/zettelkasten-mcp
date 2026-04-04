@@ -483,10 +483,7 @@ class NoteRepository(Repository[Note]):
             try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(markdown)
-            except IOError as e:
-                raise IOError(f"Failed to write note to {file_path}: {e}")
 
-            try:
                 with self.session_factory() as session:
                     db_note = session.scalar(select(DBNote).where(DBNote.id == note.id))
                     if db_note:
