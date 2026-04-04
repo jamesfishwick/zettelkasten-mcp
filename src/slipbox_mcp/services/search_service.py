@@ -4,10 +4,10 @@ from datetime import datetime
 import logging
 from typing import List, Optional, Set, Tuple, Union
 
-from sqlalchemy import or_, select, text
+from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
 
-from slipbox_mcp.models.db_models import DBLink, DBNote, DBTag
+from slipbox_mcp.models.db_models import DBNote, DBTag
 from slipbox_mcp.models.schema import Note, NoteType
 from slipbox_mcp.services.zettel_service import ZettelService
 from slipbox_mcp.storage.note_repository import _NOTE_EAGER_LOADS
