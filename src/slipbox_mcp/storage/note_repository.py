@@ -426,7 +426,14 @@ class NoteRepository(Repository[Note]):
         except IOError as e:
             raise IOError(f"Failed to write note to {file_path}: {e}")
 
-        self._index_note(note)
+        try:
+            self._index_note(note)
+        except Exception:
+            # Roll back file write to maintain consistency
+            with self.file_lock:
+                file_path.unlink(missing_ok=True)
+            raise
+
         return note
 
     def get(self, id: str) -> Optional[Note]:
