@@ -1,10 +1,9 @@
 """Comprehensive test suite for semantic link types in the Zettelkasten MCP implementation."""
 import datetime
 import pytest
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch
 
-from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag, Link
-from slipbox_mcp.services.zettel_service import ZettelService
+from slipbox_mcp.models.schema import LinkType, NoteType
 from slipbox_mcp.server.mcp_server import ZettelkastenMcpServer
 
 
@@ -29,7 +28,7 @@ class TestSemanticLinks:
             note_type=NoteType.PERMANENT,
             tags=["test", "source"]
         )
-        target_note = zettel_service.create_note(
+        zettel_service.create_note(
             title="Target Note",
             content="Target note content",
             note_type=NoteType.PERMANENT,
@@ -650,8 +649,9 @@ Test content for parsing links from markdown.
         server = ZettelkastenMcpServer()
         server.zettel_service = zettel_service
         
-        # Access the tool function directly as a method of the server
-        result = server.zk_get_linked_notes(
+        # Access the tool function via MCP's tool registry
+        zk_get_linked_notes = server.mcp._tool_manager.get_tool("zk_get_linked_notes").fn
+        result = zk_get_linked_notes(
             note_id=central_note.id,
             direction="outgoing"
         )
@@ -683,8 +683,9 @@ Test content for parsing links from markdown.
         server = ZettelkastenMcpServer()
         server.zettel_service = zettel_service  # Use our test zettel_service
         
-        # Call the tool function directly as a method of the server
-        result = server.zk_create_link(
+        # Access the tool function via MCP's tool registry
+        zk_create_link = server.mcp._tool_manager.get_tool("zk_create_link").fn
+        result = zk_create_link(
             source_id=source_note.id,
             target_id=target_note.id,
             link_type="supports",
@@ -796,7 +797,7 @@ Test content for parsing links from markdown.
             tags=["test", "search", "linked"]
         )
         
-        unlinked_note = zettel_service.create_note(
+        zettel_service.create_note(
             title="Unlinked Search Note",
             content="Note for testing search with semantic links",
             note_type=NoteType.PERMANENT,
@@ -810,10 +811,6 @@ Test content for parsing links from markdown.
             link_type=LinkType.EXTENDS,
             description="Link for search testing"
         )
-        
-        # Create search service
-        from slipbox_mcp.services.search_service import SearchService
-        search_service = SearchService(zettel_service)
         
         # Search for linked notes
         linked_notes = zettel_service.get_linked_notes(hub_note.id, "outgoing")
@@ -849,7 +846,7 @@ Test content for parsing links from markdown.
             tags=["test", "similarity", "contradicts-target"]
         )
         
-        target3 = zettel_service.create_note(
+        zettel_service.create_note(
             title="Similar Target 3", 
             content="Third target for similarity testing",
             note_type=NoteType.PERMANENT,

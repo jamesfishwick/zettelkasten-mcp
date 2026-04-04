@@ -1,7 +1,5 @@
 """Tests for SearchService."""
-import pytest
 from slipbox_mcp.models.schema import LinkType, NoteType
-from slipbox_mcp.services.search_service import SearchService
 
 
 # Convenience wrapper: creates a note through the service using keyword args.

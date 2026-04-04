@@ -1,6 +1,5 @@
 """Tests for the NoteRepository class."""
-import pytest
-from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
+from slipbox_mcp.models.schema import LinkType, NoteType, Tag
 from helpers import make_note
 
 # Named reference strings used across multiple tests

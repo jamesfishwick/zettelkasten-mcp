@@ -4,14 +4,15 @@ from datetime import datetime
 import logging
 from typing import List, Optional, Set, Tuple, Union
 
-logger = logging.getLogger(__name__)
 from sqlalchemy import or_, select, text
 from sqlalchemy.exc import OperationalError
 
 from slipbox_mcp.models.db_models import DBLink, DBNote, DBTag
-from slipbox_mcp.models.schema import LinkType, Note, NoteType, Tag
+from slipbox_mcp.models.schema import Note, NoteType
 from slipbox_mcp.services.zettel_service import ZettelService
 from slipbox_mcp.storage.note_repository import _NOTE_EAGER_LOADS
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class SearchResult:
@@ -26,10 +27,6 @@ class SearchService:
 
     def __init__(self, zettel_service: Optional[ZettelService] = None):
         self.zettel_service = zettel_service or ZettelService()
-
-    def initialize(self) -> None:
-        """Initialize the service and dependencies."""
-        self.zettel_service.initialize()
 
     def search_by_text(
         self, query: str, include_content: bool = True, include_title: bool = True
@@ -112,8 +109,8 @@ class SearchService:
                     DBNote.id == DBLink.target_id
                 ))
                 .where(or_(
-                    DBLink.source_id != None,
-                    DBLink.target_id != None
+                    DBLink.source_id.is_not(None),
+                    DBLink.target_id.is_not(None),
                 ))
                 .subquery()
             )

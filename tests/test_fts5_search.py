@@ -2,8 +2,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from sqlalchemy.exc import OperationalError
-from slipbox_mcp.models.schema import NoteType, Tag
-from slipbox_mcp.services.search_service import SearchResult, SearchService
+from slipbox_mcp.models.schema import NoteType
+from slipbox_mcp.services.search_service import SearchService
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def test_search_by_text_returns_ranked_results(zettel_service, search_service):
         content="This note touches on epistemology briefly.",
         tags=["philosophy"]
     )
-    no_match = zettel_service.create_note(
+    zettel_service.create_note(
         title="Unrelated Note",
         content="Nothing to do with the query term at all.",
         tags=["other"]
@@ -104,7 +104,7 @@ def test_search_combined_text_uses_bm25(zettel_service, search_service):
         note_type=NoteType.PERMANENT,
         tags=["philosophy"]
     )
-    note_b = zettel_service.create_note(
+    zettel_service.create_note(
         title="Brief Mention",
         content="Ontology is mentioned once here.",
         note_type=NoteType.PERMANENT,
@@ -170,10 +170,9 @@ def test_search_combined_fts5_operational_error_returns_metadata_fallback(zettel
     We intercept at the execute() level, routing by SQL type so the metadata
     query uses the real session and only the FTS5 call raises.
     """
-    from sqlalchemy.sql.selectable import Select
     from sqlalchemy.sql.elements import TextClause
 
-    note = zettel_service.create_note(
+    zettel_service.create_note(
         title="Fallback Note",
         content="Content for fallback test.",
         tags=["fallback-tag"],
