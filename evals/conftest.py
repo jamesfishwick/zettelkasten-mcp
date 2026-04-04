@@ -79,17 +79,21 @@ def run_claude_eval(
     notes_dir: Path,
     db_path: Path,
     model: str = EVAL_MODEL,
-    max_budget_usd: float = 0.05,
+    max_budget_usd: float = 0.50,
 ) -> dict:
     """Run claude CLI with MCP server pointing at test slipbox.
 
     Returns dict with 'output', 'exit_code', 'cost_usd', and 'stderr'.
     """
+    # Use the venv's python so the MCP server subprocess can find slipbox_mcp
+    import sys
+    python_path = sys.executable
+
     mcp_config = {
         "mcpServers": {
             "slipbox": {
-                "command": "python",
-                "args": ["-m", "slipbox_mcp"],
+                "command": python_path,
+                "args": ["-c", "from slipbox_mcp.main import main; main()"],
                 "env": {
                     "SLIPBOX_NOTES_DIR": str(notes_dir),
                     "SLIPBOX_DATABASE_PATH": str(db_path),
@@ -106,8 +110,8 @@ def run_claude_eval(
             "--output-format", "json",
             "--max-budget-usd", str(max_budget_usd),
             "--mcp-config", mcp_config_json,
+            "--strict-mcp-config",
             "--dangerously-skip-permissions",
-            "--bare",
         ],
         capture_output=True,
         text=True,
@@ -116,10 +120,11 @@ def run_claude_eval(
 
     output = ""
     cost = 0.0
+    raw_data = {}
     try:
-        data = json.loads(result.stdout)
-        output = data.get("result", result.stdout)
-        cost = data.get("cost_usd", 0.0)
+        raw_data = json.loads(result.stdout)
+        output = raw_data.get("result", result.stdout)
+        cost = raw_data.get("total_cost_usd", 0.0)
     except (json.JSONDecodeError, KeyError):
         output = result.stdout
 
@@ -128,4 +133,5 @@ def run_claude_eval(
         "exit_code": result.returncode,
         "cost_usd": cost,
         "stderr": result.stderr,
+        "raw": raw_data,
     }
