@@ -168,9 +168,9 @@ class ClusterService:
         primary = sorted_tags[0].replace("-", " ").title()
         return f"{primary} Knowledge Map"
 
-    def detect_clusters(self) -> ClusterReport:
+    def detect_clusters(self, notes: Optional[List[Note]] = None) -> ClusterReport:
         """Run full cluster detection analysis."""
-        all_notes = self.zettel_service.get_all_notes()
+        all_notes = notes if notes is not None else self.zettel_service.get_all_notes()
         cooccurrence = self.build_tag_cooccurrence(all_notes)
         tag_clusters = self.find_tag_clusters(cooccurrence)
 

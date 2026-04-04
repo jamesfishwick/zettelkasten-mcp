@@ -6,6 +6,7 @@ from slipbox_mcp.models.schema import LinkType, NoteType
 from slipbox_mcp.services.cluster_service import (
     CO_OCCURRENCE_THRESHOLD,
     MIN_CLUSTER_SIZE,
+    ClusterReport,
     ClusterService,
 )
 from helpers import make_note
@@ -338,6 +339,27 @@ class TestScoreCluster:
         assert result is not None, "Score result should not be None at min cluster size"
         assert result["density"] == 0.0, f"Density should be 0.0 with no links, got {result['density']}"
         assert result["internal_links"] == 0, f"Expected 0 internal links, got {result['internal_links']}"
+
+
+class TestDetectClusters:
+    """detect_clusters runs the full cluster detection pipeline."""
+
+    def test_detect_clusters_accepts_notes_directly(self):
+        """detect_clusters should work with a plain note list."""
+        from slipbox_mcp.models.schema import Note, NoteType, Tag
+
+        service = ClusterService()
+        # Create enough notes with shared tags to form a cluster
+        notes = []
+        for i in range(6):
+            notes.append(Note(
+                title=f"Test Note {i}",
+                content=f"Content {i}",
+                note_type=NoteType.PERMANENT,
+                tags=[Tag(name="alpha"), Tag(name="beta")],
+            ))
+        report = service.detect_clusters(notes=notes)
+        assert isinstance(report, ClusterReport)
 
 
 class TestSuggestTitle:
