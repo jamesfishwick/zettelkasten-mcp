@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv venv && uv pip install -e ".[dev]"
+      - run: source .venv/bin/activate && ruff check src/ evals/
+      - run: source .venv/bin/activate && pytest -q
