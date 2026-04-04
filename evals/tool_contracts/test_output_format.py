@@ -1,4 +1,9 @@
 """Tool output format contracts -- verify tools return parseable, useful output."""
+import pytest
+
+from evals.tool_contracts.conftest import extract_note_id
+
+pytestmark = pytest.mark.contract
 
 
 class TestNoteToolOutputs:
@@ -9,7 +14,7 @@ class TestNoteToolOutputs:
 
     def test_get_note_returns_markdown_heading(self, tool):
         create_result = tool("zk_create_note")(title="My Title", content="Body here")
-        note_id = create_result.split("ID: ")[1].strip()
+        note_id = extract_note_id(create_result)
         get_result = tool("zk_get_note")(identifier=note_id)
         assert "# My Title" in get_result
 
@@ -19,7 +24,7 @@ class TestNoteToolOutputs:
 
     def test_delete_note_confirms(self, tool):
         create_result = tool("zk_create_note")(title="To Delete", content="Goodbye")
-        note_id = create_result.split("ID: ")[1].strip()
+        note_id = extract_note_id(create_result)
         delete_result = tool("zk_delete_note")(note_id=note_id)
         assert "deleted" in delete_result.lower()
 
@@ -49,8 +54,8 @@ class TestLinkToolOutputs:
     def test_create_link_confirms(self, tool):
         r1 = tool("zk_create_note")(title="Source", content="Source note")
         r2 = tool("zk_create_note")(title="Target", content="Target note")
-        id1 = r1.split("ID: ")[1].strip()
-        id2 = r2.split("ID: ")[1].strip()
+        id1 = extract_note_id(r1)
+        id2 = extract_note_id(r2)
         result = tool("zk_create_link")(
             source_id=id1,
             target_id=id2,
@@ -62,8 +67,8 @@ class TestLinkToolOutputs:
     def test_get_linked_notes(self, tool):
         r1 = tool("zk_create_note")(title="Hub Note", content="Hub content")
         r2 = tool("zk_create_note")(title="Spoke Note", content="Spoke content")
-        id1 = r1.split("ID: ")[1].strip()
-        id2 = r2.split("ID: ")[1].strip()
+        id1 = extract_note_id(r1)
+        id2 = extract_note_id(r2)
         tool("zk_create_link")(
             source_id=id1,
             target_id=id2,
@@ -78,7 +83,7 @@ class TestUpdateToolOutputs:
     def test_update_note_title(self, tool):
         """Create a note, update its title, verify get returns the new title."""
         create_result = tool("zk_create_note")(title="Old Title", content="Body text")
-        note_id = create_result.split("ID: ")[1].strip()
+        note_id = extract_note_id(create_result)
         update_result = tool("zk_update_note")(note_id=note_id, title="New Title")
         assert "updated" in update_result.lower()
         get_result = tool("zk_get_note")(identifier=note_id)
@@ -90,8 +95,8 @@ class TestRemoveLinkOutputs:
         """Create two notes + link, remove link, verify no links remain."""
         r1 = tool("zk_create_note")(title="Left Note", content="Left content")
         r2 = tool("zk_create_note")(title="Right Note", content="Right content")
-        id1 = r1.split("ID: ")[1].strip()
-        id2 = r2.split("ID: ")[1].strip()
+        id1 = extract_note_id(r1)
+        id2 = extract_note_id(r2)
         tool("zk_create_link")(
             source_id=id1, target_id=id2, link_type="supports", description="Test"
         )
@@ -130,7 +135,7 @@ class TestSimilarNotesOutputs:
         tool("zk_create_note")(
             title="Note About Cats", content="Cats are also great pets", tags="animals,pets"
         )
-        id1 = r1.split("ID: ")[1].strip()
+        id1 = extract_note_id(r1)
         result = tool("zk_find_similar_notes")(note_id=id1, threshold=0.1)
         assert "Cats" in result
 
@@ -139,13 +144,13 @@ class TestCentralNotesOutputs:
     def test_find_central_notes(self, tool):
         """Create a hub with 3+ links, verify find_central returns the hub."""
         hub = tool("zk_create_note")(title="Central Hub", content="Hub content")
-        hub_id = hub.split("ID: ")[1].strip()
+        hub_id = extract_note_id(hub)
         spoke_ids = []
         for i in range(3):
             r = tool("zk_create_note")(
                 title=f"Spoke {i}", content=f"Spoke content {i}"
             )
-            spoke_ids.append(r.split("ID: ")[1].strip())
+            spoke_ids.append(extract_note_id(r))
         for sid in spoke_ids:
             tool("zk_create_link")(
                 source_id=hub_id, target_id=sid, link_type="reference"
@@ -184,8 +189,8 @@ class TestErrorFormats:
     def test_invalid_link_type_lists_valid(self, tool):
         r1 = tool("zk_create_note")(title="A", content="A content")
         r2 = tool("zk_create_note")(title="B", content="B content")
-        id1 = r1.split("ID: ")[1].strip()
-        id2 = r2.split("ID: ")[1].strip()
+        id1 = extract_note_id(r1)
+        id2 = extract_note_id(r2)
         result = tool("zk_create_link")(
             source_id=id1, target_id=id2, link_type="invalid_type"
         )

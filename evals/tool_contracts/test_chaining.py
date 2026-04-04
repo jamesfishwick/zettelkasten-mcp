@@ -1,4 +1,9 @@
 """Tool chaining contracts -- verify tools compose correctly."""
+import pytest
+
+from evals.tool_contracts.conftest import extract_note_id
+
+pytestmark = pytest.mark.contract
 
 
 class TestCreateThenSearch:
@@ -9,7 +14,7 @@ class TestCreateThenSearch:
             content="A note about a very unique concept for search testing.",
             tags="search-test",
         )
-        note_id = create_result.split("ID: ")[1].strip()
+        note_id = extract_note_id(create_result)
 
         # Rebuild index to ensure FTS5 picks it up
         tool("zk_rebuild_index")()
@@ -23,8 +28,8 @@ class TestCreateLinkThenGet:
         """Create two notes, link them, then verify get_linked_notes shows the link."""
         r1 = tool("zk_create_note")(title="Note Alpha", content="Alpha content")
         r2 = tool("zk_create_note")(title="Note Beta", content="Beta content")
-        id1 = r1.split("ID: ")[1].strip()
-        id2 = r2.split("ID: ")[1].strip()
+        id1 = extract_note_id(r1)
+        id2 = extract_note_id(r2)
 
         tool("zk_create_link")(
             source_id=id1,
@@ -45,7 +50,7 @@ class TestUpdateThenSearch:
             title="Mutable Concept",
             content="Original content about widgets.",
         )
-        note_id = create_result.split("ID: ")[1].strip()
+        note_id = extract_note_id(create_result)
         tool("zk_rebuild_index")()
 
         # Update content
@@ -62,7 +67,7 @@ class TestDeleteThenGet:
         create_result = tool("zk_create_note")(
             title="Ephemeral Note", content="Soon to be gone."
         )
-        note_id = create_result.split("ID: ")[1].strip()
+        note_id = extract_note_id(create_result)
 
         # Verify it exists
         get_result = tool("zk_get_note")(identifier=note_id)

@@ -57,7 +57,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "evals"]
 python_files = "test_*.py"
 python_functions = "test_*"
 markers = [

@@ -3,7 +3,7 @@ from slipbox_mcp.models.schema import LinkType, NoteType
 
 
 def populate_slipbox(zettel_service) -> dict[str, str]:
-    """Build a 15-note slipbox with links and return ID reference dict.
+    """Build a 14-note slipbox with links and return ID reference dict.
 
     Returns dict mapping descriptive keys to note IDs, e.g.:
         {"hub_philosophy": "20260403...", "permanent_stoic_letters": "20260403...", ...}
