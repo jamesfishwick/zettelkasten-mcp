@@ -5,6 +5,12 @@ from typing import Optional
 from sqlalchemy import exc as sqlalchemy_exc
 
 from slipbox_mcp.models.schema import LinkType
+from slipbox_mcp.server.descriptions import (
+    ZK_CREATE_LINK,
+    ZK_GET_ALL_TAGS,
+    ZK_GET_LINKED_NOTES,
+    ZK_REMOVE_LINK,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +21,7 @@ def register_link_tools(server) -> None:
     zettel_service = server.zettel_service
     format_error = server.format_error_response
 
-    @mcp.tool(name="zk_create_link")
+    @mcp.tool(name="zk_create_link", description=ZK_CREATE_LINK)
     def zk_create_link(
         source_id: str,
         target_id: str,
@@ -23,32 +29,6 @@ def register_link_tools(server) -> None:
         description: Optional[str] = None,
         bidirectional: bool = False
     ) -> str:
-        """Create a semantic link between two notes.
-
-        Links are directional: source -> target. Use bidirectional=true for
-        important relationships (automatically creates inverse link type).
-
-        Link Types:
-        - reference: Generic "see also" connection
-        - extends: Source builds upon target (inverse: extended_by)
-        - refines: Source clarifies or improves target (inverse: refined_by)
-        - contradicts: Source presents opposing view (inverse: contradicted_by)
-        - questions: Source raises questions about target (inverse: questioned_by)
-        - supports: Source provides evidence for target (inverse: supported_by)
-        - related: Loose thematic connection (symmetric)
-
-        Best Practices:
-        - Always add description explaining WHY notes are linked
-        - Use bidirectional=true for substantive relationships
-        - Create links immediately after creating notes
-
-        Args:
-            source_id: ID of the source note (the note doing the linking)
-            target_id: ID of the target note (the note being linked to)
-            link_type: One of reference/extends/refines/contradicts/questions/supports/related
-            description: Brief explanation of the relationship
-            bidirectional: If true, creates inverse link from target to source
-        """
         try:
             try:
                 link_type_enum = LinkType(link_type.lower())
@@ -71,19 +51,12 @@ def register_link_tools(server) -> None:
                 return "A link of this type already exists between these notes. Try a different link type."
             return format_error(e)
 
-    @mcp.tool(name="zk_remove_link")
+    @mcp.tool(name="zk_remove_link", description=ZK_REMOVE_LINK)
     def zk_remove_link(
         source_id: str,
         target_id: str,
         bidirectional: bool = False
     ) -> str:
-        """Remove a link between two notes.
-
-        Args:
-            source_id: ID of the source note
-            target_id: ID of the target note
-            bidirectional: If true, removes links in both directions
-        """
         try:
             source_note, target_note = zettel_service.remove_link(
                 source_id=str(source_id),
@@ -97,24 +70,11 @@ def register_link_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_get_linked_notes")
+    @mcp.tool(name="zk_get_linked_notes", description=ZK_GET_LINKED_NOTES)
     def zk_get_linked_notes(
         note_id: str,
         direction: str = "both"
     ) -> str:
-        """Get notes linked to or from a specific note.
-
-        Use this to explore the knowledge graph around a note.
-
-        Directions:
-        - outgoing: Notes this note links TO
-        - incoming: Notes that link TO this note
-        - both: All connected notes in either direction
-
-        Args:
-            note_id: ID of the note to explore from
-            direction: One of outgoing/incoming/both (default: both)
-        """
         try:
             if direction not in ["outgoing", "incoming", "both"]:
                 return f"Invalid direction: {direction}. Use 'outgoing', 'incoming', or 'both'."
@@ -147,14 +107,8 @@ def register_link_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_get_all_tags")
+    @mcp.tool(name="zk_get_all_tags", description=ZK_GET_ALL_TAGS)
     def zk_get_all_tags() -> str:
-        """Get all tags in the Zettelkasten.
-
-        Returns alphabetically sorted list of all tags.
-        Use this to find existing tags before creating new notes
-        to maintain tag consistency across your knowledge base.
-        """
         try:
             tags = zettel_service.get_all_tags()
             if not tags:

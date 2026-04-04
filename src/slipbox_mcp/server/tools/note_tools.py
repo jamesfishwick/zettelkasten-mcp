@@ -3,6 +3,12 @@ import logging
 from typing import List, Optional
 
 from slipbox_mcp.models.schema import NoteType
+from slipbox_mcp.server.descriptions import (
+    ZK_CREATE_NOTE,
+    ZK_DELETE_NOTE,
+    ZK_GET_NOTE,
+    ZK_UPDATE_NOTE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +33,7 @@ def register_note_tools(server) -> None:
     zettel_service = server.zettel_service
     format_error = server.format_error_response
 
-    @mcp.tool(name="zk_create_note")
+    @mcp.tool(name="zk_create_note", description=ZK_CREATE_NOTE)
     def zk_create_note(
         title: str,
         content: str,
@@ -35,31 +41,6 @@ def register_note_tools(server) -> None:
         tags: Optional[str] = None,
         references: Optional[str] = None
     ) -> str:
-        """Create a new atomic Zettelkasten note.
-
-        Each note should contain exactly one idea. After creating, immediately
-        link to related notes using zk_create_link.
-
-        Note Types:
-        - fleeting: Quick captures, unprocessed thoughts (process within 24-48 hours)
-        - literature: Ideas extracted from sources (always include citation in references)
-        - permanent: Refined ideas in your own words (the core of your Zettelkasten)
-        - structure: Maps organizing 7-15 related notes on a topic
-        - hub: Entry points into major knowledge domains
-
-        Best Practices:
-        - Title should express the idea in brief (understandable without reading content)
-        - Content should be 3-7 paragraphs, enough to stand alone
-        - Use 2-5 specific tags; prefer existing tags when they fit
-        - Search first (zk_search_notes) to avoid duplicating existing notes
-
-        Args:
-            title: Concise title expressing the core idea
-            content: Full note content in markdown
-            note_type: One of fleeting/literature/permanent/structure/hub (default: permanent)
-            tags: Comma-separated tags, e.g. "poetry,revision,craft"
-            references: Newline-separated citations to external sources (e.g. "Ahrens, S. (2017). How to Take Smart Notes.\nhttps://zettelkasten.de")
-        """
         try:
             try:
                 note_type_enum = NoteType(note_type.lower())
@@ -80,16 +61,8 @@ def register_note_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_get_note")
+    @mcp.tool(name="zk_get_note", description=ZK_GET_NOTE)
     def zk_get_note(identifier: str) -> str:
-        """Retrieve a note by ID or title.
-
-        Returns full note content including metadata, tags, and links.
-        Use this to read note contents before creating links or updates.
-
-        Args:
-            identifier: Either the note ID (e.g. "20251217T172432480464000") or exact title
-        """
         try:
             identifier = str(identifier)
             note = zettel_service.get_note(identifier)
@@ -114,7 +87,7 @@ def register_note_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_update_note")
+    @mcp.tool(name="zk_update_note", description=ZK_UPDATE_NOTE)
     def zk_update_note(
         note_id: str,
         title: Optional[str] = None,
@@ -123,20 +96,6 @@ def register_note_tools(server) -> None:
         tags: Optional[str] = None,
         references: Optional[str] = None
     ) -> str:
-        """Update an existing note.
-
-        Only provided fields are updated; omitted fields remain unchanged.
-        Pass empty string for tags to clear all tags.
-        Pass empty string for references to clear all references.
-
-        Args:
-            note_id: The ID of the note to update
-            title: New title (optional)
-            content: New content (optional)
-            note_type: New type: fleeting/literature/permanent/structure/hub (optional)
-            tags: New comma-separated tags, or empty string to clear (optional)
-            references: New newline-separated citations, or empty string to clear (optional)
-        """
         try:
             note = zettel_service.get_note(str(note_id))
             if not note:
@@ -167,16 +126,8 @@ def register_note_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_delete_note")
+    @mcp.tool(name="zk_delete_note", description=ZK_DELETE_NOTE)
     def zk_delete_note(note_id: str) -> str:
-        """Delete a note permanently.
-
-        Warning: This also removes all links to and from this note.
-        Consider updating note_type to "fleeting" instead if uncertain.
-
-        Args:
-            note_id: The ID of the note to delete
-        """
         try:
             note = zettel_service.get_note(note_id)
             if not note:

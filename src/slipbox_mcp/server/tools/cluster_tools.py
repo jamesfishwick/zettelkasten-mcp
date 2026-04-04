@@ -2,6 +2,12 @@
 import logging
 from typing import Optional
 from slipbox_mcp.models.schema import LinkType, NoteType
+from slipbox_mcp.server.descriptions import (
+    ZK_CREATE_STRUCTURE_FROM_CLUSTER,
+    ZK_DISMISS_CLUSTER,
+    ZK_GET_CLUSTER_REPORT,
+    ZK_REFRESH_CLUSTERS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -13,33 +19,13 @@ def register_cluster_tools(server) -> None:
     zettel_service = server.zettel_service
     format_error = server.format_error_response
 
-    @mcp.tool(name="zk_get_cluster_report")
+    @mcp.tool(name="zk_get_cluster_report", description=ZK_GET_CLUSTER_REPORT)
     def zk_get_cluster_report(
         min_score: float = 0.5,
         limit: int = 5,
         include_notes: bool = False,
         refresh: bool = False
     ) -> str:
-        """Get pending cluster analysis for structure note creation.
-
-        Clusters are groups of notes sharing tags but lacking a structure note.
-        High-scoring clusters are good candidates for new structure notes.
-
-        Uses cached analysis by default. Set refresh=true to regenerate.
-        Cluster analysis runs automatically via cron if configured.
-
-        Scoring factors:
-        - Note count (7-15 is ideal, >15 is overdue)
-        - Orphan ratio (more orphans = more urgent)
-        - Internal link density (fewer links = needs structure)
-        - Recency (recent activity = active domain)
-
-        Args:
-            min_score: Minimum cluster score 0.0-1.0 (default: 0.5)
-            limit: Maximum clusters to return (default: 5)
-            include_notes: Include full note list per cluster (default: false)
-            refresh: Force regeneration of cluster analysis (default: false)
-        """
         try:
             if not 0.0 <= min_score <= 1.0:
                 logger.warning("zk_get_cluster_report: min_score %r out of range [0.0, 1.0]", min_score)
@@ -83,24 +69,12 @@ def register_cluster_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_create_structure_from_cluster")
+    @mcp.tool(name="zk_create_structure_from_cluster", description=ZK_CREATE_STRUCTURE_FROM_CLUSTER)
     def zk_create_structure_from_cluster(
         cluster_id: str,
         title: Optional[str] = None,
         create_links: bool = True
     ) -> str:
-        """Create a structure note from a detected cluster.
-
-        Generates a structure note organizing all notes in the cluster,
-        with bidirectional links to each member note.
-
-        Run zk_get_cluster_report first to see available clusters and their IDs.
-
-        Args:
-            cluster_id: ID from cluster report (e.g. "jackson-mac-low-chance-operations")
-            title: Override the suggested title (optional)
-            create_links: Create bidirectional links to member notes (default: true)
-        """
         try:
             report = cluster_service.load_report()
             if not report:
@@ -149,17 +123,8 @@ def register_cluster_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_refresh_clusters")
+    @mcp.tool(name="zk_refresh_clusters", description=ZK_REFRESH_CLUSTERS)
     def zk_refresh_clusters() -> str:
-        """Regenerate cluster analysis and save report.
-
-        Analyzes all notes for emergent clusters based on:
-        - Tag co-occurrence (tags that frequently appear together)
-        - Connection patterns (notes that link to each other)
-        - Structure note coverage (which clusters already have structure notes)
-
-        Results saved to ~/.local/share/mcp/slipbox/cluster-analysis.json
-        """
         try:
             report = cluster_service.detect_clusters()
             path = cluster_service.save_report(report)
@@ -181,16 +146,8 @@ def register_cluster_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_dismiss_cluster")
+    @mcp.tool(name="zk_dismiss_cluster", description=ZK_DISMISS_CLUSTER)
     def zk_dismiss_cluster(cluster_id: str) -> str:
-        """Permanently dismiss a cluster from maintenance suggestions.
-
-        Use this when a cluster has been reviewed and determined not to need
-        a structure note, or when the user doesn't want to be reminded about it.
-
-        Args:
-            cluster_id: The cluster ID to dismiss (e.g. "poetry-craft-revision")
-        """
         try:
             report = cluster_service.load_report()
             if not report:
