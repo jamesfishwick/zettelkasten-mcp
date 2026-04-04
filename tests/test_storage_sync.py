@@ -107,6 +107,10 @@ class TestUpdateAtomicity:
         assert file_path.read_text() == original_content
 
 
+@pytest.mark.skipif(
+    not hasattr(__import__("threading").RLock(), "locked"),
+    reason="RLock.locked() requires Python 3.14+",
+)
 class TestLockScope:
     """Verify file_lock covers both file and DB operations."""
 

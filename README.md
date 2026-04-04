@@ -421,15 +421,95 @@ cat ~/.local/share/mcp/slipbox/watcher.log
 
 ## Development
 
+### Setup
+
 ```bash
-# Run tests
+git clone https://github.com/jamesfishwick/slipbox-mcp.git
+cd slipbox-mcp
+uv venv && uv pip install -e ".[dev]"
+```
+
+### Testing
+
+The project has three tiers of tests:
+
+| Tier | Count | Speed | Cost | Command |
+|------|-------|-------|------|---------|
+| Unit + integration | 219 | ~2s | Free | `pytest tests/` |
+| Tool contract tests | 22 | ~0.5s | Free | `pytest evals/tool_contracts/` |
+| LLM evals | 28 | ~10min | ~$3-5 | `pytest evals/llm/` |
+
+```bash
+# Default: runs unit + contract tests (CI runs this)
 pytest
 
-# Run with debug logging
-SLIPBOX_LOG_LEVEL=DEBUG python -m slipbox_mcp
+# Run everything except LLM evals
+pytest tests/ evals/tool_contracts/
 
-# Run cluster detection manually
-python scripts/detect_clusters.py
+# Run LLM evals (requires claude CLI authenticated)
+pytest evals/llm/ -v
+
+# Run LLM evals with a specific model
+EVAL_MODEL=sonnet pytest evals/llm/ -v
+
+# Lint
+ruff check src/ evals/
+```
+
+**Unit tests** cover internal logic -- services, repository, models, parsing.
+
+**Tool contract tests** verify the MCP tool output format that the LLM sees -- parseable structure, chaining (create -> search -> get), and helpful error messages. These are deterministic and don't call any LLM.
+
+**LLM evals** send prompts to Claude via the `claude` CLI with the MCP server connected, then grade results by inspecting the database state (notes created, links made, tags applied). They test whether the LLM actually uses the tools correctly given the tool descriptions.
+
+### CI/CD
+
+**Branch protection:** Direct pushes to `main` are blocked. All changes go through PRs.
+
+| Workflow | Trigger | Runner | What |
+|----------|---------|--------|------|
+| `CI` | Every PR + push to main | GitHub-hosted | Unit + contract tests, ruff |
+| `LLM Evals` | PRs changing prompt files | Self-hosted | 28 LLM evals via claude CLI |
+
+The LLM eval workflow triggers only when these files change:
+- `src/slipbox_mcp/server/descriptions.py` (tool descriptions)
+- `src/slipbox_mcp/server/prompts.py` (prompt templates)
+- `evals/llm/**`, `evals/seed_data.py`, `evals/conftest.py`
+
+### Customizing the eval setup
+
+**If you don't want a self-hosted runner:** Remove `.github/workflows/llm-evals.yml` and run LLM evals locally before merging prompt changes:
+
+```bash
+pytest evals/llm/ -v
+```
+
+**If you want LLM evals on every PR** (not just prompt changes): Edit `.github/workflows/llm-evals.yml` and remove the `paths:` filter.
+
+**To change the default eval model:** Set `EVAL_MODEL` in your environment or in the workflow file. Default is `haiku` for speed/cost.
+
+**To set up a self-hosted runner:**
+
+```bash
+# Get a registration token
+gh api repos/OWNER/REPO/actions/runners/registration-token -X POST -q '.token'
+
+# Download and configure
+mkdir -p ~/.github-runners/slipbox-mcp && cd ~/.github-runners/slipbox-mcp
+curl -sL -o actions-runner.tar.gz https://github.com/actions/runner/releases/latest/download/actions-runner-osx-arm64-2.325.0.tar.gz
+tar xzf actions-runner.tar.gz
+./config.sh --url https://github.com/OWNER/REPO --token <TOKEN> --unattended
+nohup ./run.sh &
+```
+
+### Shared prompt constants
+
+All tool descriptions and prompt templates live in `src/slipbox_mcp/server/descriptions.py`. Both the MCP server and the eval tests import from this single source of truth. If you change a prompt, the evals test whether the LLM still behaves correctly with the new wording.
+
+### Debug logging
+
+```bash
+SLIPBOX_LOG_LEVEL=DEBUG python -c "from slipbox_mcp.main import main; main()"
 ```
 
 ---

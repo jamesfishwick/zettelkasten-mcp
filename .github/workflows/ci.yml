@@ -11,7 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
       - uses: astral-sh/setup-uv@v4
-      - run: uv venv && uv pip install -e ".[dev]"
+      - run: uv venv --python 3.13 && uv pip install -e ".[dev]" && uv pip install ruff
       - run: source .venv/bin/activate && ruff check src/ evals/
       - run: source .venv/bin/activate && pytest -q
