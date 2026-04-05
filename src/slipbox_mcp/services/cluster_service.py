@@ -2,51 +2,30 @@
 import json
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field
 from datetime import datetime
 from itertools import combinations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from slipbox_mcp.models.cluster_models import (
+    CO_OCCURRENCE_THRESHOLD,
+    MIN_CLUSTER_SIZE,
+    REPORT_PATH,
+    ClusterCandidate,
+    ClusterReport,
+)
 from slipbox_mcp.models.schema import Note, NoteType
 from slipbox_mcp.services.zettel_service import ZettelService
 
 logger = logging.getLogger(__name__)
 
-MIN_CLUSTER_SIZE = 5
-CO_OCCURRENCE_THRESHOLD = 3
-REPORT_PATH = Path("~/.local/share/mcp/slipbox/cluster-analysis.json").expanduser()
-
-
-@dataclass
-class ClusterCandidate:
-    """A detected cluster that may need a structure note."""
-    id: str
-    suggested_title: str
-    tags: List[str]
-    notes: List[Dict[str, str]]  # [{id, title}, ...]
-    note_count: int
-    orphan_count: int
-    internal_links: int
-    density: float
-    score: float
-    newest_date: Optional[datetime] = None
-
-
-@dataclass
-class ClusterReport:
-    """Full cluster analysis report."""
-    generated_at: datetime
-    clusters: List[ClusterCandidate]
-    stats: Dict[str, Any]
-    dismissed_cluster_ids: List[str] = field(default_factory=list)
-
 
 class ClusterService:
     """Service for detecting and managing knowledge clusters."""
 
-    def __init__(self, zettel_service: Optional[ZettelService] = None):
+    def __init__(self, zettel_service: Optional[ZettelService] = None, report_path: Optional[Path] = None):
         self.zettel_service = zettel_service or ZettelService()
+        self.report_path = Path(report_path) if report_path is not None else REPORT_PATH
 
     def build_tag_cooccurrence(self, notes: List[Note]) -> Dict[Tuple[str, str], int]:
         """Build matrix of tag pairs that appear together on notes."""
@@ -168,9 +147,9 @@ class ClusterService:
         primary = sorted_tags[0].replace("-", " ").title()
         return f"{primary} Knowledge Map"
 
-    def detect_clusters(self) -> ClusterReport:
+    def detect_clusters(self, notes: Optional[List[Note]] = None) -> ClusterReport:
         """Run full cluster detection analysis."""
-        all_notes = self.zettel_service.get_all_notes()
+        all_notes = notes if notes is not None else self.zettel_service.get_all_notes()
         cooccurrence = self.build_tag_cooccurrence(all_notes)
         tag_clusters = self.find_tag_clusters(cooccurrence)
 
@@ -219,7 +198,7 @@ class ClusterService:
 
     def save_report(self, report: ClusterReport) -> Path:
         """Save cluster report to JSON file."""
-        REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        self.report_path.parent.mkdir(parents=True, exist_ok=True)
 
         data = {
             "generated_at": report.generated_at.isoformat(),
@@ -242,16 +221,16 @@ class ClusterService:
             "dismissed_cluster_ids": report.dismissed_cluster_ids
         }
 
-        REPORT_PATH.write_text(json.dumps(data, indent=2))
-        return REPORT_PATH
+        self.report_path.write_text(json.dumps(data, indent=2))
+        return self.report_path
 
     def load_report(self) -> Optional[ClusterReport]:
         """Load cluster report from JSON file."""
-        if not REPORT_PATH.exists():
+        if not self.report_path.exists():
             return None
 
         try:
-            data = json.loads(REPORT_PATH.read_text())
+            data = json.loads(self.report_path.read_text())
             return ClusterReport(
                 generated_at=datetime.fromisoformat(data["generated_at"]),
                 clusters=[
