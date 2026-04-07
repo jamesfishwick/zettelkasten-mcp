@@ -611,7 +611,7 @@ Test content for parsing links from markdown.
             
     # Fix for test_mcp_get_linked_notes_tool
     def test_mcp_get_linked_notes_tool(self, zettel_service):
-        """Test that zk_get_linked_notes correctly displays semantic link types."""
+        """Test that slipbox_get_linked_notes correctly displays semantic link types."""
         # Create test notes
         central_note = zettel_service.create_note(
             title="MCP Tool Test Central Note",
@@ -639,8 +639,8 @@ Test content for parsing links from markdown.
         server.zettel_service = zettel_service
         
         # Access the tool function via MCP's tool registry
-        zk_get_linked_notes = server.mcp._tool_manager.get_tool("zk_get_linked_notes").fn
-        result = zk_get_linked_notes(
+        slipbox_get_linked_notes = server.mcp._tool_manager.get_tool("slipbox_get_linked_notes").fn
+        result = slipbox_get_linked_notes(
             note_id=central_note.id,
             direction="outgoing"
         )
@@ -653,7 +653,7 @@ Test content for parsing links from markdown.
 
     # Fix for test_mcp_create_link_tool
     def test_mcp_create_link_tool(self, zettel_service):
-        """Test that zk_create_link correctly creates links with semantic types."""
+        """Test that slipbox_create_link correctly creates links with semantic types."""
         # Create test notes
         source_note = zettel_service.create_note(
             title="MCP Create Link Source",
@@ -673,8 +673,8 @@ Test content for parsing links from markdown.
         server.zettel_service = zettel_service  # Use our test zettel_service
         
         # Access the tool function via MCP's tool registry
-        zk_create_link = server.mcp._tool_manager.get_tool("zk_create_link").fn
-        result = zk_create_link(
+        slipbox_create_link = server.mcp._tool_manager.get_tool("slipbox_create_link").fn
+        result = slipbox_create_link(
             source_id=source_note.id,
             target_id=target_note.id,
             link_type="supports",

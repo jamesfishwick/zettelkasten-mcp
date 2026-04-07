@@ -5,10 +5,10 @@ from typing import Optional
 from slipbox_mcp.formatting import format_cluster_summary
 from slipbox_mcp.models.schema import LinkType, NoteType
 from slipbox_mcp.server.descriptions import (
-    ZK_CREATE_STRUCTURE_FROM_CLUSTER,
-    ZK_DISMISS_CLUSTER,
-    ZK_GET_CLUSTER_REPORT,
-    ZK_REFRESH_CLUSTERS,
+    SLIPBOX_CREATE_STRUCTURE_FROM_CLUSTER,
+    SLIPBOX_DISMISS_CLUSTER,
+    SLIPBOX_GET_CLUSTER_REPORT,
+    SLIPBOX_REFRESH_CLUSTERS,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,8 @@ def register_cluster_tools(server) -> None:
     zettel_service = server.zettel_service
     format_error = server.format_error_response
 
-    @mcp.tool(name="zk_get_cluster_report", description=ZK_GET_CLUSTER_REPORT)
-    def zk_get_cluster_report(
+    @mcp.tool(name="slipbox_get_cluster_report", description=SLIPBOX_GET_CLUSTER_REPORT)
+    def slipbox_get_cluster_report(
         min_score: float = 0.5,
         limit: int = 5,
         include_notes: bool = False,
@@ -30,10 +30,10 @@ def register_cluster_tools(server) -> None:
     ) -> str:
         try:
             if not 0.0 <= min_score <= 1.0:
-                logger.warning("zk_get_cluster_report: min_score %r out of range [0.0, 1.0]", min_score)
+                logger.warning("slipbox_get_cluster_report: min_score %r out of range [0.0, 1.0]", min_score)
                 return "Error: min_score must be between 0.0 and 1.0."
             if limit <= 0:
-                logger.warning("zk_get_cluster_report: limit %r must be a positive integer", limit)
+                logger.warning("slipbox_get_cluster_report: limit %r must be a positive integer", limit)
                 return "Error: limit must be a positive integer."
             if refresh:
                 report = cluster_service.detect_clusters()
@@ -60,8 +60,8 @@ def register_cluster_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_create_structure_from_cluster", description=ZK_CREATE_STRUCTURE_FROM_CLUSTER)
-    def zk_create_structure_from_cluster(
+    @mcp.tool(name="slipbox_create_structure_from_cluster", description=SLIPBOX_CREATE_STRUCTURE_FROM_CLUSTER)
+    def slipbox_create_structure_from_cluster(
         cluster_id: str,
         title: Optional[str] = None,
         create_links: bool = True
@@ -69,7 +69,7 @@ def register_cluster_tools(server) -> None:
         try:
             report = cluster_service.load_report()
             if not report:
-                return "No cluster report found. Run zk_get_cluster_report(refresh=True) first."
+                return "No cluster report found. Run slipbox_get_cluster_report(refresh=True) first."
 
             cluster = next((c for c in report.clusters if c.id == cluster_id), None)
             if not cluster:
@@ -114,8 +114,8 @@ def register_cluster_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_refresh_clusters", description=ZK_REFRESH_CLUSTERS)
-    def zk_refresh_clusters() -> str:
+    @mcp.tool(name="slipbox_refresh_clusters", description=SLIPBOX_REFRESH_CLUSTERS)
+    def slipbox_refresh_clusters() -> str:
         try:
             report = cluster_service.detect_clusters()
             path = cluster_service.save_report(report)
@@ -137,12 +137,12 @@ def register_cluster_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_dismiss_cluster", description=ZK_DISMISS_CLUSTER)
-    def zk_dismiss_cluster(cluster_id: str) -> str:
+    @mcp.tool(name="slipbox_dismiss_cluster", description=SLIPBOX_DISMISS_CLUSTER)
+    def slipbox_dismiss_cluster(cluster_id: str) -> str:
         try:
             report = cluster_service.load_report()
             if not report:
-                return "No cluster report found. Run zk_refresh_clusters first."
+                return "No cluster report found. Run slipbox_refresh_clusters first."
 
             if cluster_id not in [c.id for c in report.clusters]:
                 available = ', '.join(c.id for c in report.clusters[:5])

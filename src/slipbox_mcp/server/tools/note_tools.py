@@ -14,8 +14,8 @@ def register_note_tools(server) -> None:
     zettel_service = server.zettel_service
     format_error = server.format_error_response
 
-    @mcp.tool(name="zk_create_note")
-    def zk_create_note(
+    @mcp.tool(name="slipbox_create_note")
+    def slipbox_create_note(
         title: str,
         content: str,
         note_type: str = "permanent",
@@ -25,7 +25,7 @@ def register_note_tools(server) -> None:
         """Create a new atomic Zettelkasten note.
 
         Each note should contain exactly one idea. After creating, immediately
-        link to related notes using zk_create_link.
+        link to related notes using slipbox_create_link.
 
         Note Types:
         - fleeting: Quick captures, unprocessed thoughts (process within 24-48 hours)
@@ -38,7 +38,7 @@ def register_note_tools(server) -> None:
         - Title should express the idea in brief (understandable without reading content)
         - Content should be 3-7 paragraphs, enough to stand alone
         - Use 2-5 specific tags; prefer existing tags when they fit
-        - Search first (zk_search_notes) to avoid duplicating existing notes
+        - Search first (slipbox_search_notes) to avoid duplicating existing notes
 
         Args:
             title: Concise title expressing the core idea
@@ -67,8 +67,8 @@ def register_note_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_get_note")
-    def zk_get_note(identifier: str) -> str:
+    @mcp.tool(name="slipbox_get_note")
+    def slipbox_get_note(identifier: str) -> str:
         """Retrieve a note by ID or title.
 
         Returns full note content including metadata, tags, and links.
@@ -101,8 +101,8 @@ def register_note_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_update_note")
-    def zk_update_note(
+    @mcp.tool(name="slipbox_update_note")
+    def slipbox_update_note(
         note_id: str,
         title: Optional[str] = None,
         content: Optional[str] = None,
@@ -154,8 +154,8 @@ def register_note_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_delete_note")
-    def zk_delete_note(note_id: str) -> str:
+    @mcp.tool(name="slipbox_delete_note")
+    def slipbox_delete_note(note_id: str) -> str:
         """Delete a note permanently.
 
         Warning: This also removes all links to and from this note.

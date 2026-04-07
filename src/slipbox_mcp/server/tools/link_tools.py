@@ -16,8 +16,8 @@ def register_link_tools(server) -> None:
     zettel_service = server.zettel_service
     format_error = server.format_error_response
 
-    @mcp.tool(name="zk_create_link")
-    def zk_create_link(
+    @mcp.tool(name="slipbox_create_link")
+    def slipbox_create_link(
         source_id: str,
         target_id: str,
         link_type: str = "reference",
@@ -72,8 +72,8 @@ def register_link_tools(server) -> None:
                 return "A link of this type already exists between these notes. Try a different link type."
             return format_error(e)
 
-    @mcp.tool(name="zk_remove_link")
-    def zk_remove_link(
+    @mcp.tool(name="slipbox_remove_link")
+    def slipbox_remove_link(
         source_id: str,
         target_id: str,
         bidirectional: bool = False
@@ -98,14 +98,14 @@ def register_link_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_delete_link")
-    def zk_delete_link(
+    @mcp.tool(name="slipbox_delete_link")
+    def slipbox_delete_link(
         source_id: str,
         target_id: str,
     ) -> str:
         """Delete a specific link from one note to another.
 
-        Unlike zk_remove_link, this tool returns an error if no link exists
+        Unlike slipbox_remove_link, this tool returns an error if no link exists
         between the two notes.
 
         Args:
@@ -135,8 +135,8 @@ def register_link_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_get_linked_notes")
-    def zk_get_linked_notes(
+    @mcp.tool(name="slipbox_get_linked_notes")
+    def slipbox_get_linked_notes(
         note_id: str,
         direction: str = "both"
     ) -> str:
@@ -185,8 +185,8 @@ def register_link_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_get_all_tags")
-    def zk_get_all_tags() -> str:
+    @mcp.tool(name="slipbox_get_all_tags")
+    def slipbox_get_all_tags() -> str:
         """Get all tags in the Zettelkasten.
 
         Returns alphabetically sorted list of all tags.

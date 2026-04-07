@@ -52,7 +52,7 @@ class SearchService:
                 err = str(e).lower()
                 if "no such table" in err:
                     if "notes_fts" in err:
-                        logger.error("FTS5 table 'notes_fts' missing -- run zk_rebuild_index: %s", e)
+                        logger.error("FTS5 table 'notes_fts' missing -- run slipbox_rebuild_index: %s", e)
                     else:
                         logger.error("Required table missing from database schema: %s", e)
                     raise

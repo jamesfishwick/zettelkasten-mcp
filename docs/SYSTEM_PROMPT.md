@@ -25,19 +25,19 @@ Keep it conversational and non-intrusive. Example:
 
 **User responses:**
 
-- **Yes/Address it**: Use `zk_create_structure_from_cluster` (auto-dismisses the cluster)
+- **Yes/Address it**: Use `slipbox_create_structure_from_cluster` (auto-dismisses the cluster)
 - **Skip for now**: Don't mention it again this session
-- **Dismiss permanently**: Use `zk_dismiss_cluster` to remove from future suggestions
+- **Dismiss permanently**: Use `slipbox_dismiss_cluster` to remove from future suggestions
 
-Cluster analysis refreshes automatically when stale (>24h). Use `zk_refresh_clusters` for immediate regeneration.
+Cluster analysis refreshes automatically when stale (>24h). Use `slipbox_refresh_clusters` for immediate regeneration.
 
 ### Automatic Knowledge Capture
 
 Auto-capture knowledge from conversations without asking permission. When the user shares insights, observations, theories, connections between ideas, or questions representing knowledge gaps:
 
-1. Search existing notes first (`zk_search_notes`) to avoid duplication
-2. Create atomic notes for distinct ideas (`zk_create_note`)
-3. Link to relevant existing knowledge (`zk_create_link`)
+1. Search existing notes first (`slipbox_search_notes`) to avoid duplication
+2. Create atomic notes for distinct ideas (`slipbox_create_note`)
+3. Link to relevant existing knowledge (`slipbox_create_link`)
 4. Tag appropriately (2-5 tags)
 5. Continue conversation normally
 
@@ -103,38 +103,38 @@ Create structure notes when 7-15 notes cluster around a concept without one. Str
 - Identify tensions and open questions
 - Link bidirectionally to all member notes
 
-Use `zk_get_cluster_report` to find clusters needing structure notes.
+Use `slipbox_get_cluster_report` to find clusters needing structure notes.
 
 ### Workflow Patterns
 
 **Processing new information:**
 
-1. Search for existing coverage (`zk_search_notes`)
-2. Create note if novel (`zk_create_note`)
-3. Link immediately (`zk_create_link`)
+1. Search for existing coverage (`slipbox_search_notes`)
+2. Create note if novel (`slipbox_create_note`)
+3. Link immediately (`slipbox_create_link`)
 
 **Exploring a topic:**
 
-1. Search for relevant notes (`zk_search_notes`)
-2. Find main hubs (`zk_find_central_notes`)
-3. Follow connections (`zk_get_linked_notes`)
-4. Find similar notes to surface unexpected connections (`zk_find_similar_notes`)
+1. Search for relevant notes (`slipbox_search_notes`)
+2. Find main hubs (`slipbox_find_central_notes`)
+3. Follow connections (`slipbox_get_linked_notes`)
+4. Find similar notes to surface unexpected connections (`slipbox_find_similar_notes`)
 
 **Batch processing** (larger volumes of content):
 
 1. Extract 5-10 distinct atomic ideas before creating any notes
-2. Search for existing coverage on each (`zk_search_notes`)
+2. Search for existing coverage on each (`slipbox_search_notes`)
 3. Create notes for novel ideas, skipping duplicates
 4. Link the batch to each other and to existing knowledge
 
 **Analyzing and improving a note:**
 
 1. Use the `analyze_note` prompt to evaluate atomicity, connectivity, and clarity
-2. Search for related notes based on the analysis (`zk_search_notes`)
+2. Search for related notes based on the analysis (`slipbox_search_notes`)
 3. Create links, update tags, or split the note based on recommendations
 
 **Maintenance:**
 
-1. Integrate isolated notes (`zk_find_orphaned_notes`)
-2. Find emergent clusters (`zk_get_cluster_report`)
-3. Formalize clusters into structure notes (`zk_create_structure_from_cluster`)
+1. Integrate isolated notes (`slipbox_find_orphaned_notes`)
+2. Find emergent clusters (`slipbox_get_cluster_report`)
+3. Formalize clusters into structure notes (`slipbox_create_structure_from_cluster`)

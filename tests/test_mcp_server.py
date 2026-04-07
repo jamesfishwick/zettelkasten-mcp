@@ -70,11 +70,11 @@ class TestServerInitialization(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_create_note
+# Tool: slipbox_create_note
 # ---------------------------------------------------------------------------
 
 class TestCreateNoteTool(MockServerBase):
-    """zk_create_note — happy path and tag parsing."""
+    """slipbox_create_note — happy path and tag parsing."""
 
     NOTE_ID = "test123"
 
@@ -86,7 +86,7 @@ class TestCreateNoteTool(MockServerBase):
 
     def test_create_note_returns_success_message_with_id(self):
         # Arrange / Act
-        result = self._tool("zk_create_note")(
+        result = self._tool("slipbox_create_note")(
             title="Test Note",
             content="Test content",
             note_type="permanent",
@@ -100,7 +100,7 @@ class TestCreateNoteTool(MockServerBase):
     def test_create_note_passes_parsed_tags_and_type_to_service(self):
         """Comma-separated tag string is split and NoteType enum is resolved."""
         # Act
-        self._tool("zk_create_note")(
+        self._tool("slipbox_create_note")(
             title="Test Note",
             content="Test content",
             note_type="permanent",
@@ -119,7 +119,7 @@ class TestCreateNoteTool(MockServerBase):
     def test_create_note_invalid_type_returns_error_listing_valid_types(self):
         """An unrecognised note_type string is rejected before calling the service."""
         # Act
-        result = self._tool("zk_create_note")(
+        result = self._tool("slipbox_create_note")(
             title="Test", content="Body", note_type="bogus"
         )
 
@@ -130,11 +130,11 @@ class TestCreateNoteTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_get_note
+# Tool: slipbox_get_note
 # ---------------------------------------------------------------------------
 
 class TestGetNoteTool(MockServerBase):
-    """zk_get_note — retrieves and formats a note."""
+    """slipbox_get_note — retrieves and formats a note."""
 
     NOTE_ID = "test123"
     NOTE_TITLE = "Test Note"
@@ -157,7 +157,7 @@ class TestGetNoteTool(MockServerBase):
 
     def test_get_note_output_contains_title_id_and_content(self):
         # Act
-        result = self._tool("zk_get_note")(identifier=self.NOTE_ID)
+        result = self._tool("slipbox_get_note")(identifier=self.NOTE_ID)
 
         # Assert
         assert f"# {self.NOTE_TITLE}" in result, "Output should include markdown title heading"
@@ -165,16 +165,16 @@ class TestGetNoteTool(MockServerBase):
         assert self.NOTE_CONTENT in result, "Output should include note body content"
 
     def test_get_note_calls_service_with_identifier(self):
-        self._tool("zk_get_note")(identifier=self.NOTE_ID)
+        self._tool("slipbox_get_note")(identifier=self.NOTE_ID)
         self.mock_zettel_service.get_note.assert_called_with(self.NOTE_ID)
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_create_link
+# Tool: slipbox_create_link
 # ---------------------------------------------------------------------------
 
 class TestCreateLinkTool(MockServerBase):
-    """zk_create_link — creates and confirms bidirectional links."""
+    """slipbox_create_link — creates and confirms bidirectional links."""
 
     SOURCE_ID = "source123"
     TARGET_ID = "target456"
@@ -187,7 +187,7 @@ class TestCreateLinkTool(MockServerBase):
 
     def test_bidirectional_link_result_mentions_both_ids(self):
         # Act
-        result = self._tool("zk_create_link")(
+        result = self._tool("slipbox_create_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
             link_type="extends",
@@ -201,7 +201,7 @@ class TestCreateLinkTool(MockServerBase):
         assert self.TARGET_ID in result, f"Expected target ID {self.TARGET_ID!r} in result, got {result!r}"
 
     def test_create_link_passes_correct_enum_to_service(self):
-        self._tool("zk_create_link")(
+        self._tool("slipbox_create_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
             link_type="extends",
@@ -225,7 +225,7 @@ class TestCreateLinkTool(MockServerBase):
         )
 
         # Act
-        result = self._tool("zk_create_link")(
+        result = self._tool("slipbox_create_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
             link_type="extends",
@@ -237,7 +237,7 @@ class TestCreateLinkTool(MockServerBase):
     def test_invalid_link_type_returns_error(self):
         """An unrecognised link_type string is rejected."""
         # Act
-        result = self._tool("zk_create_link")(
+        result = self._tool("slipbox_create_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
             link_type="bogus",
@@ -248,11 +248,11 @@ class TestCreateLinkTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_search_notes
+# Tool: slipbox_search_notes
 # ---------------------------------------------------------------------------
 
 class TestSearchNotesTool(MockServerBase):
-    """zk_search_notes — returns formatted results from search_combined."""
+    """slipbox_search_notes — returns formatted results from search_combined."""
 
     def setup_method(self):
         super().setup_method()
@@ -277,7 +277,7 @@ class TestSearchNotesTool(MockServerBase):
 
     def test_search_result_count_and_note_titles_in_output(self):
         # Act
-        result = self._tool("zk_search_notes")(
+        result = self._tool("slipbox_search_notes")(
             query="test query",
             tags="tag1, tag2",
             note_type="permanent",
@@ -290,7 +290,7 @@ class TestSearchNotesTool(MockServerBase):
         assert "Note 2" in result, f"Expected 'Note 2' in result, got {result!r}"
 
     def test_search_notes_calls_service_with_parsed_args(self):
-        self._tool("zk_search_notes")(
+        self._tool("slipbox_search_notes")(
             query="test query",
             tags="tag1, tag2",
             note_type="permanent",
@@ -405,62 +405,62 @@ def test_service_update_with_empty_list_clears_references(zettel_service):
 class TestGuardClauses(MockServerBase):
     """MCP tools reject invalid numeric parameters before calling services."""
 
-    # Threshold bounds for zk_find_similar_notes
+    # Threshold bounds for slipbox_find_similar_notes
     VALID_THRESHOLD = 0.5
     THRESHOLD_ERROR = "Error: threshold must be between 0.0 and 1.0."
     LIMIT_ERROR = "Error: limit must be a positive integer."
     MIN_SCORE_ERROR = "Error: min_score must be between 0.0 and 1.0."
 
     def test_find_similar_notes_rejects_threshold_above_one(self):
-        result = self._tool("zk_find_similar_notes")(note_id="abc", threshold=1.5)
+        result = self._tool("slipbox_find_similar_notes")(note_id="abc", threshold=1.5)
         assert result == self.THRESHOLD_ERROR, f"Expected {self.THRESHOLD_ERROR!r}, got {result!r}"
         self.mock_zettel_service.find_similar_notes.assert_not_called()
 
     def test_find_similar_notes_rejects_negative_threshold(self):
-        result = self._tool("zk_find_similar_notes")(note_id="abc", threshold=-0.1)
+        result = self._tool("slipbox_find_similar_notes")(note_id="abc", threshold=-0.1)
         assert result == self.THRESHOLD_ERROR, f"Expected {self.THRESHOLD_ERROR!r}, got {result!r}"
 
     def test_find_similar_notes_accepts_boundary_thresholds(self):
         """Threshold values 0.0 and 1.0 (inclusive) must pass the guard."""
         self.mock_zettel_service.find_similar_notes.return_value = []
-        self._tool("zk_find_similar_notes")(note_id="abc", threshold=0.0)
-        self._tool("zk_find_similar_notes")(note_id="abc", threshold=1.0)
+        self._tool("slipbox_find_similar_notes")(note_id="abc", threshold=0.0)
+        self._tool("slipbox_find_similar_notes")(note_id="abc", threshold=1.0)
         assert self.mock_zettel_service.find_similar_notes.call_count == 2, (
             "Both boundary calls should reach find_similar_notes"
         )
 
     def test_find_similar_notes_rejects_limit_zero(self):
-        result = self._tool("zk_find_similar_notes")(note_id="abc", threshold=self.VALID_THRESHOLD, limit=0)
+        result = self._tool("slipbox_find_similar_notes")(note_id="abc", threshold=self.VALID_THRESHOLD, limit=0)
         assert result == self.LIMIT_ERROR, f"Expected {self.LIMIT_ERROR!r}, got {result!r}"
         self.mock_zettel_service.find_similar_notes.assert_not_called()
 
     def test_find_similar_notes_rejects_negative_limit(self):
-        result = self._tool("zk_find_similar_notes")(note_id="abc", threshold=self.VALID_THRESHOLD, limit=-1)
+        result = self._tool("slipbox_find_similar_notes")(note_id="abc", threshold=self.VALID_THRESHOLD, limit=-1)
         assert result == self.LIMIT_ERROR, f"Expected {self.LIMIT_ERROR!r}, got {result!r}"
 
     def test_find_central_notes_rejects_limit_zero(self):
-        result = self._tool("zk_find_central_notes")(limit=0)
+        result = self._tool("slipbox_find_central_notes")(limit=0)
         assert result == self.LIMIT_ERROR, f"Expected {self.LIMIT_ERROR!r}, got {result!r}"
         self.mock_search_service.find_central_notes.assert_not_called()
 
     def test_find_central_notes_rejects_negative_limit(self):
-        result = self._tool("zk_find_central_notes")(limit=-5)
+        result = self._tool("slipbox_find_central_notes")(limit=-5)
         assert result == self.LIMIT_ERROR, f"Expected {self.LIMIT_ERROR!r}, got {result!r}"
 
     def test_get_cluster_report_rejects_min_score_above_one(self):
-        result = self._tool("zk_get_cluster_report")(min_score=1.5)
+        result = self._tool("slipbox_get_cluster_report")(min_score=1.5)
         assert result == self.MIN_SCORE_ERROR, f"Expected {self.MIN_SCORE_ERROR!r}, got {result!r}"
 
     def test_get_cluster_report_rejects_negative_min_score(self):
-        result = self._tool("zk_get_cluster_report")(min_score=-0.1)
+        result = self._tool("slipbox_get_cluster_report")(min_score=-0.1)
         assert result == self.MIN_SCORE_ERROR, f"Expected {self.MIN_SCORE_ERROR!r}, got {result!r}"
 
     def test_get_cluster_report_accepts_boundary_min_scores(self):
         """min_score values 0.0 and 1.0 must pass the guard and reach load_report."""
         self.mock_cluster_service.load_report.return_value = None
         calls_before = self.mock_cluster_service.load_report.call_count
-        result_low = self._tool("zk_get_cluster_report")(min_score=0.0)
-        result_high = self._tool("zk_get_cluster_report")(min_score=1.0)
+        result_low = self._tool("slipbox_get_cluster_report")(min_score=0.0)
+        result_high = self._tool("slipbox_get_cluster_report")(min_score=1.0)
         assert result_low != self.MIN_SCORE_ERROR, "min_score=0.0 should pass guard"
         assert result_high != self.MIN_SCORE_ERROR, "min_score=1.0 should pass guard"
         # Guard must not fire for boundary values; load_report called exactly once per call
@@ -469,7 +469,7 @@ class TestGuardClauses(MockServerBase):
         )
 
     def test_get_cluster_report_rejects_limit_zero(self):
-        result = self._tool("zk_get_cluster_report")(min_score=self.VALID_THRESHOLD, limit=0)
+        result = self._tool("slipbox_get_cluster_report")(min_score=self.VALID_THRESHOLD, limit=0)
         assert result == self.LIMIT_ERROR, f"Expected {self.LIMIT_ERROR!r}, got {result!r}"
 
 
@@ -524,11 +524,11 @@ class TestParseRefs:
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_update_note
+# Tool: slipbox_update_note
 # ---------------------------------------------------------------------------
 
 class TestUpdateNoteTool(MockServerBase):
-    """zk_update_note -- happy path, not-found, and invalid type."""
+    """slipbox_update_note -- happy path, not-found, and invalid type."""
 
     NOTE_ID = "update123"
     NOTE_TITLE = "Updated Title"
@@ -545,7 +545,7 @@ class TestUpdateNoteTool(MockServerBase):
         self.mock_zettel_service.update_note.return_value = self.mock_note
 
         # Act
-        result = self._tool("zk_update_note")(
+        result = self._tool("slipbox_update_note")(
             note_id=self.NOTE_ID, title=self.NOTE_TITLE
         )
 
@@ -558,7 +558,7 @@ class TestUpdateNoteTool(MockServerBase):
         self.mock_zettel_service.get_note.return_value = None
 
         # Act
-        result = self._tool("zk_update_note")(note_id="missing", title="X")
+        result = self._tool("slipbox_update_note")(note_id="missing", title="X")
 
         # Assert
         assert "Note not found: missing" in result, f"Expected not-found message, got {result!r}"
@@ -568,7 +568,7 @@ class TestUpdateNoteTool(MockServerBase):
         self.mock_zettel_service.get_note.return_value = self.mock_note
 
         # Act
-        result = self._tool("zk_update_note")(
+        result = self._tool("slipbox_update_note")(
             note_id=self.NOTE_ID, note_type="bogus"
         )
 
@@ -578,11 +578,11 @@ class TestUpdateNoteTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_delete_note
+# Tool: slipbox_delete_note
 # ---------------------------------------------------------------------------
 
 class TestDeleteNoteTool(MockServerBase):
-    """zk_delete_note -- happy path and not-found."""
+    """slipbox_delete_note -- happy path and not-found."""
 
     NOTE_ID = "delete123"
 
@@ -593,7 +593,7 @@ class TestDeleteNoteTool(MockServerBase):
         self.mock_zettel_service.get_note.return_value = mock_note
 
         # Act
-        result = self._tool("zk_delete_note")(note_id=self.NOTE_ID)
+        result = self._tool("slipbox_delete_note")(note_id=self.NOTE_ID)
 
         # Assert
         assert "deleted successfully" in result, f"Expected success message, got {result!r}"
@@ -604,18 +604,18 @@ class TestDeleteNoteTool(MockServerBase):
         self.mock_zettel_service.get_note.return_value = None
 
         # Act
-        result = self._tool("zk_delete_note")(note_id="missing")
+        result = self._tool("slipbox_delete_note")(note_id="missing")
 
         # Assert
         assert "Note not found: missing" in result, f"Expected not-found message, got {result!r}"
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_remove_link
+# Tool: slipbox_remove_link
 # ---------------------------------------------------------------------------
 
 class TestRemoveLinkTool(MockServerBase):
-    """zk_remove_link -- directional and bidirectional removal."""
+    """slipbox_remove_link -- directional and bidirectional removal."""
 
     SOURCE_ID = "src001"
     TARGET_ID = "tgt002"
@@ -628,7 +628,7 @@ class TestRemoveLinkTool(MockServerBase):
 
     def test_directional_returns_from_to_message(self):
         # Act
-        result = self._tool("zk_remove_link")(
+        result = self._tool("slipbox_remove_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
             bidirectional=False,
@@ -641,7 +641,7 @@ class TestRemoveLinkTool(MockServerBase):
 
     def test_bidirectional_returns_between_message(self):
         # Act
-        result = self._tool("zk_remove_link")(
+        result = self._tool("slipbox_remove_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
             bidirectional=True,
@@ -654,11 +654,11 @@ class TestRemoveLinkTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_delete_link
+# Tool: slipbox_delete_link
 # ---------------------------------------------------------------------------
 
 class TestDeleteLinkTool(MockServerBase):
-    """zk_delete_link -- strict deletion with existence check."""
+    """slipbox_delete_link -- strict deletion with existence check."""
 
     SOURCE_ID = "src001"
     TARGET_ID = "tgt002"
@@ -683,7 +683,7 @@ class TestDeleteLinkTool(MockServerBase):
         self.mock_zettel_service.remove_link.return_value = (source, None)
 
         # Act
-        result = self._tool("zk_delete_link")(
+        result = self._tool("slipbox_delete_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
         )
@@ -707,7 +707,7 @@ class TestDeleteLinkTool(MockServerBase):
         )
 
         # Act
-        result = self._tool("zk_delete_link")(
+        result = self._tool("slipbox_delete_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
         )
@@ -721,7 +721,7 @@ class TestDeleteLinkTool(MockServerBase):
         self.mock_zettel_service.get_note.return_value = None
 
         # Act
-        result = self._tool("zk_delete_link")(
+        result = self._tool("slipbox_delete_link")(
             source_id="missing",
             target_id=self.TARGET_ID,
         )
@@ -737,7 +737,7 @@ class TestDeleteLinkTool(MockServerBase):
         )
 
         # Act
-        result = self._tool("zk_delete_link")(
+        result = self._tool("slipbox_delete_link")(
             source_id=self.SOURCE_ID,
             target_id="missing",
         )
@@ -747,11 +747,11 @@ class TestDeleteLinkTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_get_linked_notes
+# Tool: slipbox_get_linked_notes
 # ---------------------------------------------------------------------------
 
 class TestGetLinkedNotesTool(MockServerBase):
-    """zk_get_linked_notes -- happy path, no links, invalid direction."""
+    """slipbox_get_linked_notes -- happy path, no links, invalid direction."""
 
     NOTE_ID = "center001"
 
@@ -774,7 +774,7 @@ class TestGetLinkedNotesTool(MockServerBase):
         self.mock_zettel_service.get_note.return_value = source_note
 
         # Act
-        result = self._tool("zk_get_linked_notes")(
+        result = self._tool("slipbox_get_linked_notes")(
             note_id=self.NOTE_ID, direction="outgoing"
         )
 
@@ -788,7 +788,7 @@ class TestGetLinkedNotesTool(MockServerBase):
         self.mock_zettel_service.get_linked_notes.return_value = []
 
         # Act
-        result = self._tool("zk_get_linked_notes")(
+        result = self._tool("slipbox_get_linked_notes")(
             note_id=self.NOTE_ID, direction="both"
         )
 
@@ -797,7 +797,7 @@ class TestGetLinkedNotesTool(MockServerBase):
 
     def test_invalid_direction_returns_error(self):
         # Act
-        result = self._tool("zk_get_linked_notes")(
+        result = self._tool("slipbox_get_linked_notes")(
             note_id=self.NOTE_ID, direction="sideways"
         )
 
@@ -808,11 +808,11 @@ class TestGetLinkedNotesTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_get_all_tags
+# Tool: slipbox_get_all_tags
 # ---------------------------------------------------------------------------
 
 class TestGetAllTagsTool(MockServerBase):
-    """zk_get_all_tags -- happy path and empty."""
+    """slipbox_get_all_tags -- happy path and empty."""
 
     def test_happy_path_returns_sorted_tag_list(self):
         # Arrange
@@ -823,7 +823,7 @@ class TestGetAllTagsTool(MockServerBase):
         self.mock_zettel_service.get_all_tags.return_value = [tag_a, tag_b, tag_c]
 
         # Act
-        result = self._tool("zk_get_all_tags")()
+        result = self._tool("slipbox_get_all_tags")()
 
         # Assert
         assert "Found 3 tags" in result, f"Expected tag count header, got {result!r}"
@@ -839,18 +839,18 @@ class TestGetAllTagsTool(MockServerBase):
         self.mock_zettel_service.get_all_tags.return_value = []
 
         # Act
-        result = self._tool("zk_get_all_tags")()
+        result = self._tool("slipbox_get_all_tags")()
 
         # Assert
         assert "No tags found" in result, f"Expected no-tags message, got {result!r}"
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_find_similar_notes
+# Tool: slipbox_find_similar_notes
 # ---------------------------------------------------------------------------
 
 class TestFindSimilarNotesTool(MockServerBase):
-    """zk_find_similar_notes -- happy path with results."""
+    """slipbox_find_similar_notes -- happy path with results."""
 
     NOTE_ID = "sim001"
     SIMILAR_SCORE = 0.85
@@ -869,7 +869,7 @@ class TestFindSimilarNotesTool(MockServerBase):
         ]
 
         # Act
-        result = self._tool("zk_find_similar_notes")(
+        result = self._tool("slipbox_find_similar_notes")(
             note_id=self.NOTE_ID, threshold=0.3
         )
 
@@ -880,11 +880,11 @@ class TestFindSimilarNotesTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_find_central_notes
+# Tool: slipbox_find_central_notes
 # ---------------------------------------------------------------------------
 
 class TestFindCentralNotesTool(MockServerBase):
-    """zk_find_central_notes -- happy path with results."""
+    """slipbox_find_central_notes -- happy path with results."""
 
     CONNECTION_COUNT = 12
 
@@ -902,7 +902,7 @@ class TestFindCentralNotesTool(MockServerBase):
         ]
 
         # Act
-        result = self._tool("zk_find_central_notes")(limit=5)
+        result = self._tool("slipbox_find_central_notes")(limit=5)
 
         # Assert
         assert "Central Hub" in result, f"Expected central note title, got {result!r}"
@@ -913,11 +913,11 @@ class TestFindCentralNotesTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_find_orphaned_notes
+# Tool: slipbox_find_orphaned_notes
 # ---------------------------------------------------------------------------
 
 class TestFindOrphanedNotesTool(MockServerBase):
-    """zk_find_orphaned_notes -- happy path and empty."""
+    """slipbox_find_orphaned_notes -- happy path and empty."""
 
     def test_happy_path_returns_formatted_orphan_list(self):
         # Arrange
@@ -929,7 +929,7 @@ class TestFindOrphanedNotesTool(MockServerBase):
         self.mock_search_service.find_orphaned_notes.return_value = [orphan]
 
         # Act
-        result = self._tool("zk_find_orphaned_notes")()
+        result = self._tool("slipbox_find_orphaned_notes")()
 
         # Assert
         assert "Lonely Note" in result, f"Expected orphan title, got {result!r}"
@@ -941,7 +941,7 @@ class TestFindOrphanedNotesTool(MockServerBase):
         self.mock_search_service.find_orphaned_notes.return_value = []
 
         # Act
-        result = self._tool("zk_find_orphaned_notes")()
+        result = self._tool("slipbox_find_orphaned_notes")()
 
         # Assert
         assert result == "No orphaned notes found.", (
@@ -950,11 +950,11 @@ class TestFindOrphanedNotesTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_list_notes_by_date
+# Tool: slipbox_list_notes_by_date
 # ---------------------------------------------------------------------------
 
 class TestListNotesByDateTool(MockServerBase):
-    """zk_list_notes_by_date -- happy path, no results, and invalid date."""
+    """slipbox_list_notes_by_date -- happy path, no results, and invalid date."""
 
     def _make_dated_note(self, note_id, title, date_str):
         note = MagicMock()
@@ -972,7 +972,7 @@ class TestListNotesByDateTool(MockServerBase):
         self.mock_search_service.find_notes_by_date_range.return_value = [note]
 
         # Act
-        result = self._tool("zk_list_notes_by_date")(
+        result = self._tool("slipbox_list_notes_by_date")(
             start_date="2023-06-01", end_date="2023-06-30", limit=10
         )
 
@@ -986,7 +986,7 @@ class TestListNotesByDateTool(MockServerBase):
         self.mock_search_service.find_notes_by_date_range.return_value = []
 
         # Act
-        result = self._tool("zk_list_notes_by_date")(
+        result = self._tool("slipbox_list_notes_by_date")(
             start_date="2099-01-01", end_date="2099-12-31"
         )
 
@@ -995,18 +995,18 @@ class TestListNotesByDateTool(MockServerBase):
 
     def test_invalid_date_returns_parsing_error(self):
         # Act
-        result = self._tool("zk_list_notes_by_date")(start_date="not-a-date")
+        result = self._tool("slipbox_list_notes_by_date")(start_date="not-a-date")
 
         # Assert
         assert "Error parsing date" in result, f"Expected date parsing error, got {result!r}"
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_rebuild_index
+# Tool: slipbox_rebuild_index
 # ---------------------------------------------------------------------------
 
 class TestRebuildIndexTool(MockServerBase):
-    """zk_rebuild_index -- happy path."""
+    """slipbox_rebuild_index -- happy path."""
 
     NOTE_COUNT = 42
 
@@ -1015,7 +1015,7 @@ class TestRebuildIndexTool(MockServerBase):
         self.mock_zettel_service.get_all_notes.return_value = [MagicMock()] * self.NOTE_COUNT
 
         # Act
-        result = self._tool("zk_rebuild_index")()
+        result = self._tool("slipbox_rebuild_index")()
 
         # Assert
         assert "rebuilt successfully" in result, f"Expected success message, got {result!r}"
@@ -1025,11 +1025,11 @@ class TestRebuildIndexTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_get_cluster_report (happy path)
+# Tool: slipbox_get_cluster_report (happy path)
 # ---------------------------------------------------------------------------
 
 class TestGetClusterReportTool(MockServerBase):
-    """zk_get_cluster_report -- happy path with results."""
+    """slipbox_get_cluster_report -- happy path with results."""
 
     def _make_report_with_clusters(self):
         from slipbox_mcp.services.cluster_service import ClusterCandidate, ClusterReport
@@ -1062,7 +1062,7 @@ class TestGetClusterReportTool(MockServerBase):
         self.mock_cluster_service.load_report.return_value = report
 
         # Act
-        result = self._tool("zk_get_cluster_report")(min_score=0.5)
+        result = self._tool("slipbox_get_cluster_report")(min_score=0.5)
 
         # Assert
         assert "Poetry & Craft" in result, f"Expected cluster title, got {result!r}"
@@ -1075,18 +1075,18 @@ class TestGetClusterReportTool(MockServerBase):
         self.mock_cluster_service.load_report.return_value = report
 
         # Act
-        result = self._tool("zk_get_cluster_report")(min_score=0.99)
+        result = self._tool("slipbox_get_cluster_report")(min_score=0.99)
 
         # Assert
         assert "No clusters found" in result, f"Expected no-clusters message, got {result!r}"
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_refresh_clusters
+# Tool: slipbox_refresh_clusters
 # ---------------------------------------------------------------------------
 
 class TestRefreshClustersTool(MockServerBase):
-    """zk_refresh_clusters -- happy path."""
+    """slipbox_refresh_clusters -- happy path."""
 
     def test_happy_path_returns_stats(self):
         from slipbox_mcp.services.cluster_service import ClusterCandidate, ClusterReport
@@ -1117,7 +1117,7 @@ class TestRefreshClustersTool(MockServerBase):
         self.mock_cluster_service.save_report.return_value = "/tmp/report.json"
 
         # Act
-        result = self._tool("zk_refresh_clusters")()
+        result = self._tool("slipbox_refresh_clusters")()
 
         # Assert
         assert "Cluster analysis complete" in result, f"Expected success header, got {result!r}"
@@ -1126,11 +1126,11 @@ class TestRefreshClustersTool(MockServerBase):
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_dismiss_cluster
+# Tool: slipbox_dismiss_cluster
 # ---------------------------------------------------------------------------
 
 class TestDismissClusterTool(MockServerBase):
-    """zk_dismiss_cluster -- happy path and not-found."""
+    """slipbox_dismiss_cluster -- happy path and not-found."""
 
     def _make_report(self, cluster_ids):
         from slipbox_mcp.services.cluster_service import ClusterCandidate, ClusterReport
@@ -1161,7 +1161,7 @@ class TestDismissClusterTool(MockServerBase):
         self.mock_cluster_service.load_report.return_value = self._make_report([CLUSTER_ID])
 
         # Act
-        result = self._tool("zk_dismiss_cluster")(cluster_id=CLUSTER_ID)
+        result = self._tool("slipbox_dismiss_cluster")(cluster_id=CLUSTER_ID)
 
         # Assert
         assert "dismissed" in result, f"Expected dismiss confirmation, got {result!r}"
@@ -1173,7 +1173,7 @@ class TestDismissClusterTool(MockServerBase):
         self.mock_cluster_service.load_report.return_value = self._make_report(["existing"])
 
         # Act
-        result = self._tool("zk_dismiss_cluster")(cluster_id="nonexistent")
+        result = self._tool("slipbox_dismiss_cluster")(cluster_id="nonexistent")
 
         # Assert
         assert "not found" in result, f"Expected not-found message, got {result!r}"
@@ -1183,18 +1183,18 @@ class TestDismissClusterTool(MockServerBase):
         self.mock_cluster_service.load_report.return_value = None
 
         # Act
-        result = self._tool("zk_dismiss_cluster")(cluster_id="any")
+        result = self._tool("slipbox_dismiss_cluster")(cluster_id="any")
 
         # Assert
         assert "No cluster report found" in result, f"Expected no-report message, got {result!r}"
 
 
 # ---------------------------------------------------------------------------
-# Tool: zk_create_structure_from_cluster
+# Tool: slipbox_create_structure_from_cluster
 # ---------------------------------------------------------------------------
 
 class TestCreateStructureFromClusterTool(MockServerBase):
-    """zk_create_structure_from_cluster -- happy path and not-found."""
+    """slipbox_create_structure_from_cluster -- happy path and not-found."""
 
     def _make_report(self, cluster_id, note_infos):
         from slipbox_mcp.services.cluster_service import ClusterCandidate, ClusterReport
@@ -1229,7 +1229,7 @@ class TestCreateStructureFromClusterTool(MockServerBase):
         self.mock_zettel_service.create_link.return_value = (MagicMock(), MagicMock())
 
         # Act
-        result = self._tool("zk_create_structure_from_cluster")(
+        result = self._tool("slipbox_create_structure_from_cluster")(
             cluster_id=CLUSTER_ID
         )
 
@@ -1245,7 +1245,7 @@ class TestCreateStructureFromClusterTool(MockServerBase):
         self.mock_cluster_service.load_report.return_value = report
 
         # Act
-        result = self._tool("zk_create_structure_from_cluster")(
+        result = self._tool("slipbox_create_structure_from_cluster")(
             cluster_id="nonexistent"
         )
 
@@ -1257,7 +1257,7 @@ class TestCreateStructureFromClusterTool(MockServerBase):
         self.mock_cluster_service.load_report.return_value = None
 
         # Act
-        result = self._tool("zk_create_structure_from_cluster")(cluster_id="any")
+        result = self._tool("slipbox_create_structure_from_cluster")(cluster_id="any")
 
         # Assert
         assert "No cluster report found" in result, f"Expected no-report message, got {result!r}"

@@ -9,11 +9,11 @@ Prompt constants are prefixed with PROMPT_.
 # Note tools
 # ---------------------------------------------------------------------------
 
-ZK_CREATE_NOTE = """\
+SLIPBOX_CREATE_NOTE = """\
 Create a new atomic Zettelkasten note.
 
 Each note should contain exactly one idea. After creating, immediately
-link to related notes using zk_create_link.
+link to related notes using slipbox_create_link.
 
 Note Types:
 - fleeting: Quick captures, unprocessed thoughts (process within 24-48 hours)
@@ -26,7 +26,7 @@ Best Practices:
 - Title should express the idea in brief (understandable without reading content)
 - Content should be 3-7 paragraphs, enough to stand alone
 - Use 2-5 specific tags; prefer existing tags when they fit
-- Search first (zk_search_notes) to avoid duplicating existing notes
+- Search first (slipbox_search_notes) to avoid duplicating existing notes
 
 Args:
     title: Concise title expressing the core idea
@@ -36,7 +36,7 @@ Args:
     references: Newline-separated citations to external sources (e.g. "Ahrens, S. (2017). How to Take Smart Notes.\\nhttps://zettelkasten.de")\
 """
 
-ZK_GET_NOTE = """\
+SLIPBOX_GET_NOTE = """\
 Retrieve a note by ID or title.
 
 Returns full note content including metadata, tags, and links.
@@ -46,7 +46,7 @@ Args:
     identifier: Either the note ID (e.g. "20251217T172432480464000") or exact title\
 """
 
-ZK_UPDATE_NOTE = """\
+SLIPBOX_UPDATE_NOTE = """\
 Update an existing note.
 
 Only provided fields are updated; omitted fields remain unchanged.
@@ -62,7 +62,7 @@ Args:
     references: New newline-separated citations, or empty string to clear (optional)\
 """
 
-ZK_DELETE_NOTE = """\
+SLIPBOX_DELETE_NOTE = """\
 Delete a note permanently.
 
 Warning: This also removes all links to and from this note.
@@ -76,7 +76,7 @@ Args:
 # Link tools
 # ---------------------------------------------------------------------------
 
-ZK_CREATE_LINK = """\
+SLIPBOX_CREATE_LINK = """\
 Create a semantic link between two notes.
 
 Links are directional: source -> target. Use bidirectional=true for
@@ -104,7 +104,7 @@ Args:
     bidirectional: If true, creates inverse link from target to source\
 """
 
-ZK_REMOVE_LINK = """\
+SLIPBOX_REMOVE_LINK = """\
 Remove a link between two notes.
 
 Args:
@@ -113,7 +113,7 @@ Args:
     bidirectional: If true, removes links in both directions\
 """
 
-ZK_GET_LINKED_NOTES = """\
+SLIPBOX_GET_LINKED_NOTES = """\
 Get notes linked to or from a specific note.
 
 Use this to explore the knowledge graph around a note.
@@ -128,7 +128,7 @@ Args:
     direction: One of outgoing/incoming/both (default: both)\
 """
 
-ZK_GET_ALL_TAGS = """\
+SLIPBOX_GET_ALL_TAGS = """\
 Get all tags in the Zettelkasten.
 
 Returns alphabetically sorted list of all tags.
@@ -140,7 +140,7 @@ to maintain tag consistency across your knowledge base.\
 # Search tools
 # ---------------------------------------------------------------------------
 
-ZK_SEARCH_NOTES = """\
+SLIPBOX_SEARCH_NOTES = """\
 Search for notes by text, tags, or type.
 
 Searches across titles and content. Combine parameters for precise filtering.
@@ -158,7 +158,7 @@ Args:
     limit: Maximum results to return (default: 10)\
 """
 
-ZK_FIND_SIMILAR_NOTES = """\
+SLIPBOX_FIND_SIMILAR_NOTES = """\
 Find notes similar to a given note.
 
 Similarity is based on shared tags, common links, and content overlap.
@@ -170,7 +170,7 @@ Args:
     limit: Maximum results (default: 5)\
 """
 
-ZK_FIND_CENTRAL_NOTES = """\
+SLIPBOX_FIND_CENTRAL_NOTES = """\
 Find the most connected notes in the Zettelkasten.
 
 Central notes have the most incoming and outgoing links, making them
@@ -180,14 +180,14 @@ Args:
     limit: Maximum results (default: 10)\
 """
 
-ZK_FIND_ORPHANED_NOTES = """\
+SLIPBOX_FIND_ORPHANED_NOTES = """\
 Find notes with no connections to other notes.
 
 Orphaned notes represent unintegrated knowledge. Review these periodically
 to either link them to existing notes or identify candidates for deletion.\
 """
 
-ZK_LIST_NOTES_BY_DATE = """\
+SLIPBOX_LIST_NOTES_BY_DATE = """\
 List notes by creation or update date.
 
 Useful for reviewing recent work or finding notes from a specific period.
@@ -199,7 +199,7 @@ Args:
     limit: Maximum results (default: 10)\
 """
 
-ZK_REBUILD_INDEX = """\
+SLIPBOX_REBUILD_INDEX = """\
 Rebuild the database index from markdown files.
 
 Use this if notes were edited outside the MCP server or if the
@@ -210,7 +210,7 @@ database seems out of sync with the filesystem.\
 # Cluster tools
 # ---------------------------------------------------------------------------
 
-ZK_GET_CLUSTER_REPORT = """\
+SLIPBOX_GET_CLUSTER_REPORT = """\
 Get pending cluster analysis for structure note creation.
 
 Clusters are groups of notes sharing tags but lacking a structure note.
@@ -232,13 +232,13 @@ Args:
     refresh: Force regeneration of cluster analysis (default: false)\
 """
 
-ZK_CREATE_STRUCTURE_FROM_CLUSTER = """\
+SLIPBOX_CREATE_STRUCTURE_FROM_CLUSTER = """\
 Create a structure note from a detected cluster.
 
 Generates a structure note organizing all notes in the cluster,
 with bidirectional links to each member note.
 
-Run zk_get_cluster_report first to see available clusters and their IDs.
+Run slipbox_get_cluster_report first to see available clusters and their IDs.
 
 Args:
     cluster_id: ID from cluster report (e.g. "jackson-mac-low-chance-operations")
@@ -246,7 +246,7 @@ Args:
     create_links: Create bidirectional links to member notes (default: true)\
 """
 
-ZK_REFRESH_CLUSTERS = """\
+SLIPBOX_REFRESH_CLUSTERS = """\
 Regenerate cluster analysis and save report.
 
 Analyzes all notes for emergent clusters based on:
@@ -257,7 +257,7 @@ Analyzes all notes for emergent clusters based on:
 Results saved to ~/.local/share/mcp/slipbox/cluster-analysis.json\
 """
 
-ZK_DISMISS_CLUSTER = """\
+SLIPBOX_DISMISS_CLUSTER = """\
 Permanently dismiss a cluster from maintenance suggestions.
 
 Use this when a cluster has been reviewed and determined not to need
@@ -398,9 +398,9 @@ Does the note contain exactly one idea? If multiple concepts are present:
 
 **Do this before suggesting connections:**
 1. Extract 2-3 key terms from the note
-2. Run `zk_search_notes` for each term to find related existing notes
-3. Run `zk_find_similar_notes` if this is an existing note ID
-4. Check `zk_find_central_notes` to see if this relates to a knowledge hub
+2. Run `slipbox_search_notes` for each term to find related existing notes
+3. Run `slipbox_find_similar_notes` if this is an existing note ID
+4. Check `slipbox_find_central_notes` to see if this relates to a knowledge hub
 
 **Then report:**
 - Specific existing notes this should link to (with IDs and titles)
@@ -424,7 +424,7 @@ Provide the rewritten version in a code block for easy copying.
 
 ## 4. Metadata Suggestions
 
-**Tags:** Run `zk_get_all_tags` first. Suggest 3-5 tags, preferring existing tags over new ones. If proposing a new tag, justify why existing tags don't fit.
+**Tags:** Run `slipbox_get_all_tags` first. Suggest 3-5 tags, preferring existing tags over new ones. If proposing a new tag, justify why existing tags don't fit.
 
 **Title:** Propose a clear, searchable title that expresses the core idea.
 
@@ -466,7 +466,7 @@ Based on what you found in the slipbox:
 [type with rationale]
 
 ### Rewritten Note
-[clean version ready for zk_create_note]
+[clean version ready for slipbox_create_note]
 
 ### Emergent Insights
 [questions, gaps, unexpected connections]

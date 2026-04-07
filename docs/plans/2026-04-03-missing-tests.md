@@ -503,7 +503,7 @@ git commit -m "test: add coverage for cluster_service pure functions"
 **Files:**
 - Modify: `tests/test_mcp_server.py`
 
-Add test classes for the uncovered tools: `zk_update_note`, `zk_delete_note`, `zk_remove_link`, `zk_get_linked_notes`, `zk_get_all_tags`, `zk_find_similar_notes` (happy path), `zk_find_central_notes` (happy path), `zk_find_orphaned_notes`, `zk_list_notes_by_date`, `zk_rebuild_index`, `_parse_refs`, and cluster tools.
+Add test classes for the uncovered tools: `slipbox_update_note`, `slipbox_delete_note`, `slipbox_remove_link`, `slipbox_get_linked_notes`, `slipbox_get_all_tags`, `slipbox_find_similar_notes` (happy path), `slipbox_find_central_notes` (happy path), `slipbox_find_orphaned_notes`, `slipbox_list_notes_by_date`, `slipbox_rebuild_index`, `_parse_refs`, and cluster tools.
 
 All follow MockServerBase pattern. Tests for each tool cover:
 1. Happy path output format

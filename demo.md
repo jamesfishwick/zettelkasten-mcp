@@ -214,28 +214,28 @@ Data Architecture Knowledge Map
 When connected to Claude Desktop, the server exposes these tools:
 
 ```bash
-grep 'def zk_' src/slipbox_mcp/server/mcp_server.py | sed 's/.*def //' | sed 's/(.*//' | sed 's/^/  /'
+grep 'def slipbox_' src/slipbox_mcp/server/mcp_server.py | sed 's/.*def //' | sed 's/(.*//' | sed 's/^/  /'
 ```
 
 ```output
-  zk_create_note
-  zk_get_note
-  zk_update_note
-  zk_delete_note
-  zk_create_link
-  zk_remove_link
-  zk_search_notes
-  zk_get_linked_notes
-  zk_get_all_tags
-  zk_find_similar_notes
-  zk_find_central_notes
-  zk_find_orphaned_notes
-  zk_list_notes_by_date
-  zk_rebuild_index
-  zk_get_cluster_report
-  zk_create_structure_from_cluster
-  zk_refresh_clusters
-  zk_dismiss_cluster
+  slipbox_create_note
+  slipbox_get_note
+  slipbox_update_note
+  slipbox_delete_note
+  slipbox_create_link
+  slipbox_remove_link
+  slipbox_search_notes
+  slipbox_get_linked_notes
+  slipbox_get_all_tags
+  slipbox_find_similar_notes
+  slipbox_find_central_notes
+  slipbox_find_orphaned_notes
+  slipbox_list_notes_by_date
+  slipbox_rebuild_index
+  slipbox_get_cluster_report
+  slipbox_create_structure_from_cluster
+  slipbox_refresh_clusters
+  slipbox_dismiss_cluster
 ```
 
 Seven semantic link types connect notes: **reference**, **extends**, **refines**, **contradicts**, **questions**, **supports**, **related**. These typed relationships let Claude navigate the knowledge graph purposefully — not just by keyword.
@@ -284,7 +284,7 @@ Search for notes tagged "poetry" and "craft" about revision.
 Which notes are the most connected in my Zettelkasten? Show me the top 10.
 ```
 
-**What it shows:** `zk_find_central_notes` traverses the link graph and surfaces structural anchors. These are the notes everything else orbits. A knowledge base with no central notes is a pile of files; one with them is a network.
+**What it shows:** `slipbox_find_central_notes` traverses the link graph and surfaces structural anchors. These are the notes everything else orbits. A knowledge base with no central notes is a pile of files; one with them is a network.
 
 ---
 
@@ -393,7 +393,7 @@ This demonstrates that the user controls what gets captured. Claude proposes; th
 Find notes similar to [paste an ID from the central notes output].
 ```
 
-**What it shows:** `zk_find_similar_notes` computes similarity from shared tags, common links, and content overlap — three signals. Lower the threshold to 0.1 to show the spectrum of similarity scores.
+**What it shows:** `slipbox_find_similar_notes` computes similarity from shared tags, common links, and content overlap — three signals. Lower the threshold to 0.1 to show the spectrum of similarity scores.
 
 ---
 
@@ -406,7 +406,7 @@ Run a cluster analysis and show me the top clusters that need structure notes.
 
 Or to refresh stale data:
 ```
-Run zk_refresh_clusters and then show me the report.
+Run slipbox_refresh_clusters and then show me the report.
 ```
 
 **What it shows:** The cluster detector finds groups of co-occurring tags that lack an organizing structure note. Each cluster gets a score based on note count, orphan ratio, link density, and recency. Point out:
@@ -422,7 +422,7 @@ Run zk_refresh_clusters and then show me the report.
 Take the highest-scoring cluster and create a structure note for it. Link it to all the member notes.
 ```
 
-**What it shows:** `zk_create_structure_from_cluster` does the full scaffolding automatically: creates the structure note, writes a TODO synthesis stub, creates bidirectional `reference` links to every member note, and dismisses the cluster from future reports. This is the core value proposition: Claude turning emergent patterns into organized knowledge.
+**What it shows:** `slipbox_create_structure_from_cluster` does the full scaffolding automatically: creates the structure note, writes a TODO synthesis stub, creates bidirectional `reference` links to every member note, and dismisses the cluster from future reports. This is the core value proposition: Claude turning emergent patterns into organized knowledge.
 
 ---
 
@@ -438,7 +438,7 @@ Or a date range:
 List notes created between 2026-01-01 and 2026-03-01.
 ```
 
-**What it shows:** `zk_list_notes_by_date` with `use_updated=true` vs `false`. Useful for reviewing what was captured during a specific project or time period.
+**What it shows:** `slipbox_list_notes_by_date` with `use_updated=true` vs `false`. Useful for reviewing what was captured during a specific project or time period.
 
 ---
 
@@ -449,7 +449,7 @@ List notes created between 2026-01-01 and 2026-03-01.
 Show me all the tags in my Zettelkasten.
 ```
 
-**What it shows:** `zk_get_all_tags` returns the full vocabulary alphabetically. Point out that tag consistency is a hygiene problem in any knowledge base — this is how Claude can check before creating notes with new tags. Say to Claude:
+**What it shows:** `slipbox_get_all_tags` returns the full vocabulary alphabetically. Point out that tag consistency is a hygiene problem in any knowledge base — this is how Claude can check before creating notes with new tags. Say to Claude:
 
 ```
 Before creating any new notes, check the existing tags and tell me which ones are most relevant to software architecture.
@@ -600,7 +600,7 @@ Capture these 10 screenshots during a demo run. Each one tells a specific part o
 
 ### 8. Structure Note Creation (Section 11)
 
-**Capture:** `zk_create_structure_from_cluster` output: structure note created, N/N member notes linked, cluster dismissed.
+**Capture:** `slipbox_create_structure_from_cluster` output: structure note created, N/N member notes linked, cluster dismissed.
 
 **Why:** The payoff of cluster detection. One command turns an emergent pattern into organized knowledge. The "big demo moment."
 

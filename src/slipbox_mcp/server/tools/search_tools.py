@@ -16,8 +16,8 @@ def register_search_tools(server) -> None:
     zettel_service = server.zettel_service
     format_error = server.format_error_response
 
-    @mcp.tool(name="zk_search_notes")
-    def zk_search_notes(
+    @mcp.tool(name="slipbox_search_notes")
+    def slipbox_search_notes(
         query: Optional[str] = None,
         tags: Optional[str] = None,
         note_type: Optional[str] = None,
@@ -71,8 +71,8 @@ def register_search_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_find_similar_notes")
-    def zk_find_similar_notes(
+    @mcp.tool(name="slipbox_find_similar_notes")
+    def slipbox_find_similar_notes(
         note_id: str,
         threshold: float = 0.3,
         limit: int = 5
@@ -89,10 +89,10 @@ def register_search_tools(server) -> None:
         """
         try:
             if not 0.0 <= threshold <= 1.0:
-                logger.warning("zk_find_similar_notes: threshold %r out of range [0.0, 1.0]", threshold)
+                logger.warning("slipbox_find_similar_notes: threshold %r out of range [0.0, 1.0]", threshold)
                 return "Error: threshold must be between 0.0 and 1.0."
             if limit <= 0:
-                logger.warning("zk_find_similar_notes: limit %r must be a positive integer", limit)
+                logger.warning("slipbox_find_similar_notes: limit %r must be a positive integer", limit)
                 return "Error: limit must be a positive integer."
             similar_notes = zettel_service.find_similar_notes(str(note_id), threshold)
             similar_notes = similar_notes[:limit]
@@ -110,8 +110,8 @@ def register_search_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_find_central_notes")
-    def zk_find_central_notes(limit: int = 10) -> str:
+    @mcp.tool(name="slipbox_find_central_notes")
+    def slipbox_find_central_notes(limit: int = 10) -> str:
         """Find the most connected notes in the Zettelkasten.
 
         Central notes have the most incoming and outgoing links, making them
@@ -122,7 +122,7 @@ def register_search_tools(server) -> None:
         """
         try:
             if limit <= 0:
-                logger.warning("zk_find_central_notes: limit %r must be a positive integer", limit)
+                logger.warning("slipbox_find_central_notes: limit %r must be a positive integer", limit)
                 return "Error: limit must be a positive integer."
             central_notes = search_service.find_central_notes(limit)
             if not central_notes:
@@ -139,8 +139,8 @@ def register_search_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_find_orphaned_notes")
-    def zk_find_orphaned_notes() -> str:
+    @mcp.tool(name="slipbox_find_orphaned_notes")
+    def slipbox_find_orphaned_notes() -> str:
         """Find notes with no connections to other notes.
 
         Orphaned notes represent unintegrated knowledge. Review these periodically
@@ -161,8 +161,8 @@ def register_search_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_list_notes_by_date")
-    def zk_list_notes_by_date(
+    @mcp.tool(name="slipbox_list_notes_by_date")
+    def slipbox_list_notes_by_date(
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         use_updated: bool = False,
@@ -228,8 +228,8 @@ def register_search_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
-    @mcp.tool(name="zk_rebuild_index")
-    def zk_rebuild_index() -> str:
+    @mcp.tool(name="slipbox_rebuild_index")
+    def slipbox_rebuild_index() -> str:
         """Rebuild the database index from markdown files.
 
         Use this if notes were edited outside the MCP server or if the
