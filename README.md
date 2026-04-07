@@ -4,7 +4,7 @@ Model Context Protocol server for managing a Zettelkasten knowledge system with 
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.10+
 - macOS or Linux
 
 ## Features
@@ -111,7 +111,7 @@ In Claude:
 
 ## Optional: Automatic Cluster Detection
 
-Cluster analysis scans all notes and computes similarity scores. Running it daily (6am) pre-computes results so `zk_get_cluster_report()` returns instantly. Without scheduling, cluster detection runs on-demand, which is slower for large collections.
+Cluster analysis scans all notes and computes similarity scores. Running it daily (6am) pre-computes results so `slipbox_get_cluster_report()` returns instantly. Without scheduling, cluster detection runs on-demand, which is slower for large collections.
 
 Run manually after bulk imports, major reorganization, or when you want immediate results.
 
@@ -143,7 +143,7 @@ Output saved to `~/.local/share/mcp/slipbox/cluster-analysis.json`.
 
 ## Optional: File Watcher for Auto-Indexing
 
-The MCP server maintains a database index for fast searching. Editing notes in Obsidian (or any editor) makes the database stale until you run `zk_rebuild_index`.
+The MCP server maintains a database index for fast searching. Editing notes in Obsidian (or any editor) makes the database stale until you run `slipbox_rebuild_index`.
 
 The file watcher runs as a background daemon, monitoring your notes directory and automatically rebuilding the index when `.md` files change.
 
@@ -200,45 +200,45 @@ Add the system prompt from `docs/SYSTEM_PROMPT.md` to your Claude preferences. T
 
 | Tool | Description |
 |------|-------------|
-| `zk_create_note` | Create atomic notes (fleeting/literature/permanent/structure/hub) |
-| `zk_get_note` | Retrieve note by ID or title |
-| `zk_update_note` | Update existing notes |
-| `zk_delete_note` | Delete notes |
+| `slipbox_create_note` | Create atomic notes (fleeting/literature/permanent/structure/hub) |
+| `slipbox_get_note` | Retrieve note by ID or title |
+| `slipbox_update_note` | Update existing notes |
+| `slipbox_delete_note` | Delete notes |
 
 ### Linking
 
 | Tool | Description |
 |------|-------------|
-| `zk_create_link` | Create semantic links between notes |
-| `zk_remove_link` | Remove links |
-| `zk_delete_link` | Delete a specific link (errors if link does not exist) |
-| `zk_get_linked_notes` | Get notes linked to/from a note |
+| `slipbox_create_link` | Create semantic links between notes |
+| `slipbox_remove_link` | Remove links |
+| `slipbox_delete_link` | Delete a specific link (errors if link does not exist) |
+| `slipbox_get_linked_notes` | Get notes linked to/from a note |
 
 ### Search & Discovery
 
 | Tool | Description |
 |------|-------------|
-| `zk_search_notes` | Search by text (BM25-ranked), tags, or type |
-| `zk_find_similar_notes` | Find notes similar to a given note |
-| `zk_find_central_notes` | Find most connected notes |
-| `zk_find_orphaned_notes` | Find unconnected notes |
-| `zk_list_notes_by_date` | List notes by date range |
-| `zk_get_all_tags` | List all tags |
+| `slipbox_search_notes` | Search by text (BM25-ranked), tags, or type |
+| `slipbox_find_similar_notes` | Find notes similar to a given note |
+| `slipbox_find_central_notes` | Find most connected notes |
+| `slipbox_find_orphaned_notes` | Find unconnected notes |
+| `slipbox_list_notes_by_date` | List notes by date range |
+| `slipbox_get_all_tags` | List all tags |
 
 ### Cluster Analysis
 
 | Tool | Description |
 |------|-------------|
-| `zk_get_cluster_report` | Get pending clusters needing structure notes |
-| `zk_create_structure_from_cluster` | Create structure note from cluster |
-| `zk_refresh_clusters` | Regenerate cluster analysis |
-| `zk_dismiss_cluster` | Permanently dismiss cluster from suggestions |
+| `slipbox_get_cluster_report` | Get pending clusters needing structure notes |
+| `slipbox_create_structure_from_cluster` | Create structure note from cluster |
+| `slipbox_refresh_clusters` | Regenerate cluster analysis |
+| `slipbox_dismiss_cluster` | Permanently dismiss cluster from suggestions |
 
 ### Maintenance
 
 | Tool | Description |
 |------|-------------|
-| `zk_rebuild_index` | Rebuild database index from files |
+| `slipbox_rebuild_index` | Rebuild database index from files |
 
 ---
 
@@ -335,18 +335,18 @@ Content here...
 - reference [[20250728T125429845760000]] Member of structure
 ```
 
-You can edit these files directly in any text editor or Obsidian. Run `zk_rebuild_index` after external edits.
+You can edit these files directly in any text editor or Obsidian. Run `slipbox_rebuild_index` after external edits.
 
 ---
 
 ## Upgrading
 
-After pulling new versions, restart Claude Desktop. If the release notes mention database changes, run `zk_rebuild_index` once to bring your existing database up to date.
+After pulling new versions, restart Claude Desktop. If the release notes mention database changes, run `slipbox_rebuild_index` once to bring your existing database up to date.
 
 **Upgrading to FTS5 search (any version after the FTS5 release):** The full-text search index is created automatically when the server starts against a new database. For existing databases, the FTS5 table will be created on first startup but will be empty until you run:
 
 ```
-zk_rebuild_index
+slipbox_rebuild_index
 ```
 
 This populates the BM25 index from your existing notes. Search results will not be relevance-ranked until this is done.
@@ -375,10 +375,10 @@ If your notes directory ends up at `./~/...` relative to CWD, you used `~` in th
 
 ### Search returns no results
 
-1. The FTS5 index may not be populated. Run `zk_rebuild_index` once to index existing notes.
-2. If you recently edited notes outside Claude, the index may be stale. Run `zk_rebuild_index`.
+1. The FTS5 index may not be populated. Run `slipbox_rebuild_index` once to index existing notes.
+2. If you recently edited notes outside Claude, the index may be stale. Run `slipbox_rebuild_index`.
 
-### `zk_list_notes_by_date` returns empty results
+### `slipbox_list_notes_by_date` returns empty results
 
 If `start_date` is later than `end_date`, no notes match and an empty result is returned — this is expected behavior, not an error.
 
@@ -387,7 +387,7 @@ If `start_date` is later than `end_date`, no notes match and an empty result is 
 If notes were edited outside the MCP server:
 
 ```
-zk_rebuild_index
+slipbox_rebuild_index
 ```
 
 ### Cluster detection not running
@@ -417,6 +417,32 @@ cat ~/.local/share/mcp/slipbox/watcher.log
 ./scripts/install-file-watcher.sh --uninstall
 ./scripts/install-file-watcher.sh
 ```
+
+### Upgrading from `ZETTELKASTEN_*` environment variables
+
+If you previously used `ZETTELKASTEN_NOTES_DIR`, `ZETTELKASTEN_DATABASE_PATH`, or other `ZETTELKASTEN_*` variables, they are **no longer read**. Rename them to their `SLIPBOX_*` equivalents:
+
+| Old | New |
+|-----|-----|
+| `ZETTELKASTEN_NOTES_DIR` | `SLIPBOX_NOTES_DIR` |
+| `ZETTELKASTEN_DATABASE_PATH` | `SLIPBOX_DATABASE_PATH` |
+| `ZETTELKASTEN_LOG_LEVEL` | `SLIPBOX_LOG_LEVEL` |
+| `ZETTELKASTEN_BASE_DIR` | `SLIPBOX_BASE_DIR` |
+| `ZETTELKASTEN_SERVER_NAME` | `SLIPBOX_SERVER_NAME` |
+
+The server logs a warning if old names are detected, but does not migrate them automatically.
+
+### Cluster report path is not configurable
+
+The cluster analysis report always writes to `~/.local/share/mcp/slipbox/cluster-analysis.json`, regardless of `SLIPBOX_BASE_DIR` or `SLIPBOX_NOTES_DIR`. If you use non-default paths, the cluster report will still be in the default location.
+
+### Install scripts are macOS-only
+
+The `scripts/install-cluster-detection.sh` and `scripts/install-file-watcher.sh` scripts use `launchctl` and `~/Library/LaunchAgents/`, which only exist on macOS. On Linux, you'll need to create equivalent systemd units or cron jobs manually. See the manual test commands in the relevant README sections to verify the underlying Python scripts work on your platform.
+
+### Default paths are relative to the working directory
+
+If `SLIPBOX_NOTES_DIR` and `SLIPBOX_DATABASE_PATH` are not set, the server defaults to `data/notes` and `data/db/slipbox.db` **relative to the current working directory**. When running via Claude Desktop, the CWD may not be what you expect. Always set absolute paths in `claude_desktop_config.json` to avoid this.
 
 ---
 
@@ -517,19 +543,19 @@ SLIPBOX_LOG_LEVEL=DEBUG python -c "from slipbox_mcp.main import main; main()"
 
 ## CLI Tool
 
-The `zk` command provides terminal access for mechanical operations:
+The `slipbox` command provides terminal access for mechanical operations:
 
 ```bash
-zk status          # Overview of notes, tags, orphans, pending clusters
-zk search <query>  # Find notes by text
-zk clusters        # Show pending structure note candidates
-zk orphans         # List unconnected notes
-zk rebuild         # Rebuild index (add --clusters to refresh cluster analysis)
-zk export <id>     # Export note markdown to stdout
-zk tags            # List all tags with usage counts
+slipbox status          # Overview of notes, tags, orphans, pending clusters
+slipbox search <query>  # Find notes by text
+slipbox clusters        # Show pending structure note candidates
+slipbox orphans         # List unconnected notes
+slipbox rebuild         # Rebuild index (add --clusters to refresh cluster analysis)
+slipbox export <id>     # Export note markdown to stdout
+slipbox tags            # List all tags with usage counts
 ```
 
-Install: `pipx install --editable .` (adds `zk` to your PATH)
+Install: `pipx install --editable .` (adds `slipbox` to your PATH)
 
 ---
 
