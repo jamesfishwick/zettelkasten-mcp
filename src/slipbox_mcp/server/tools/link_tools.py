@@ -98,6 +98,43 @@ def register_link_tools(server) -> None:
         except Exception as e:
             return format_error(e)
 
+    @mcp.tool(name="zk_delete_link")
+    def zk_delete_link(
+        source_id: str,
+        target_id: str,
+    ) -> str:
+        """Delete a specific link from one note to another.
+
+        Unlike zk_remove_link, this tool returns an error if no link exists
+        between the two notes.
+
+        Args:
+            source_id: ID of the source note (the note containing the link)
+            target_id: ID of the target note (the note being linked to)
+        """
+        try:
+            source_note = zettel_service.get_note(str(source_id))
+            if not source_note:
+                return format_error(ValueError(f"Source note not found: {source_id}"))
+
+            target_note = zettel_service.get_note(str(target_id))
+            if not target_note:
+                return format_error(ValueError(f"Target note not found: {target_id}"))
+
+            has_link = any(
+                link.target_id == str(target_id) for link in source_note.links
+            )
+            if not has_link:
+                return f"No link exists from {source_id} to {target_id}"
+
+            source_note, _ = zettel_service.remove_link(
+                source_id=str(source_id),
+                target_id=str(target_id),
+            )
+            return f"Link deleted from {source_id} to {target_id}"
+        except Exception as e:
+            return format_error(e)
+
     @mcp.tool(name="zk_get_linked_notes")
     def zk_get_linked_notes(
         note_id: str,
