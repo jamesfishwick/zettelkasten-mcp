@@ -615,18 +615,27 @@ class TestDeleteNoteTool(MockServerBase):
 # ---------------------------------------------------------------------------
 
 class TestRemoveLinkTool(MockServerBase):
-    """zk_remove_link -- directional and bidirectional removal."""
+    """zk_remove_link -- directional/bidirectional removal with existence check."""
 
     SOURCE_ID = "src001"
     TARGET_ID = "tgt002"
 
-    def setup_method(self):
-        super().setup_method()
-        source, target = MagicMock(), MagicMock()
-        source.id, target.id = self.SOURCE_ID, self.TARGET_ID
-        self.mock_zettel_service.remove_link.return_value = (source, target)
+    def _make_source_with_link(self):
+        source = MagicMock()
+        source.id = self.SOURCE_ID
+        link = MagicMock()
+        link.target_id = self.TARGET_ID
+        source.links = [link]
+        return source
 
     def test_directional_returns_from_to_message(self):
+        # Arrange
+        source = self._make_source_with_link()
+        target = MagicMock()
+        target.id = self.TARGET_ID
+        self.mock_zettel_service.get_note.return_value = source
+        self.mock_zettel_service.remove_link.return_value = (source, target)
+
         # Act
         result = self._tool("zk_remove_link")(
             source_id=self.SOURCE_ID,
@@ -640,6 +649,13 @@ class TestRemoveLinkTool(MockServerBase):
         )
 
     def test_bidirectional_returns_between_message(self):
+        # Arrange
+        source = self._make_source_with_link()
+        target = MagicMock()
+        target.id = self.TARGET_ID
+        self.mock_zettel_service.get_note.return_value = source
+        self.mock_zettel_service.remove_link.return_value = (source, target)
+
         # Act
         result = self._tool("zk_remove_link")(
             source_id=self.SOURCE_ID,
@@ -652,62 +668,15 @@ class TestRemoveLinkTool(MockServerBase):
             f"Expected bidirectional removal message, got {result!r}"
         )
 
-
-# ---------------------------------------------------------------------------
-# Tool: zk_delete_link
-# ---------------------------------------------------------------------------
-
-class TestDeleteLinkTool(MockServerBase):
-    """zk_delete_link -- strict deletion with existence check."""
-
-    SOURCE_ID = "src001"
-    TARGET_ID = "tgt002"
-
-    def _make_source_with_link(self):
-        source = MagicMock()
-        source.id = self.SOURCE_ID
-        link = MagicMock()
-        link.target_id = self.TARGET_ID
-        link.link_type = LinkType.REFERENCE
-        source.links = [link]
-        return source
-
-    def test_deletes_existing_link(self):
-        # Arrange
-        source = self._make_source_with_link()
-        target = MagicMock()
-        target.id = self.TARGET_ID
-        self.mock_zettel_service.get_note.side_effect = lambda nid: (
-            source if nid == self.SOURCE_ID else target
-        )
-        self.mock_zettel_service.remove_link.return_value = (source, None)
-
-        # Act
-        result = self._tool("zk_delete_link")(
-            source_id=self.SOURCE_ID,
-            target_id=self.TARGET_ID,
-        )
-
-        # Assert
-        assert f"Link deleted from {self.SOURCE_ID} to {self.TARGET_ID}" in result
-        self.mock_zettel_service.remove_link.assert_called_once_with(
-            source_id=self.SOURCE_ID,
-            target_id=self.TARGET_ID,
-        )
-
     def test_error_when_link_does_not_exist(self):
         # Arrange
         source = MagicMock()
         source.id = self.SOURCE_ID
-        source.links = []  # no links
-        target = MagicMock()
-        target.id = self.TARGET_ID
-        self.mock_zettel_service.get_note.side_effect = lambda nid: (
-            source if nid == self.SOURCE_ID else target
-        )
+        source.links = []
+        self.mock_zettel_service.get_note.return_value = source
 
         # Act
-        result = self._tool("zk_delete_link")(
+        result = self._tool("zk_remove_link")(
             source_id=self.SOURCE_ID,
             target_id=self.TARGET_ID,
         )
@@ -721,29 +690,13 @@ class TestDeleteLinkTool(MockServerBase):
         self.mock_zettel_service.get_note.return_value = None
 
         # Act
-        result = self._tool("zk_delete_link")(
+        result = self._tool("zk_remove_link")(
             source_id="missing",
             target_id=self.TARGET_ID,
         )
 
         # Assert
         assert "Source note not found: missing" in result
-
-    def test_error_when_target_not_found(self):
-        # Arrange
-        source = self._make_source_with_link()
-        self.mock_zettel_service.get_note.side_effect = lambda nid: (
-            source if nid == self.SOURCE_ID else None
-        )
-
-        # Act
-        result = self._tool("zk_delete_link")(
-            source_id=self.SOURCE_ID,
-            target_id="missing",
-        )
-
-        # Assert
-        assert "Target note not found: missing" in result
 
 
 # ---------------------------------------------------------------------------
