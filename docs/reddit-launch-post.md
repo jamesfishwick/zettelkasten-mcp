@@ -21,7 +21,7 @@ So I built **slipbox-mcp** -- an MCP server that gives Claude direct access to a
 - BM25-ranked full-text search via SQLite FTS5
 - Automatic cluster detection -- finds groups of related notes that might need a structure note
 - Graph analysis: find central notes, orphans, similar notes
-- CLI tool (`zk`) for quick terminal access
+- CLI tool (`slipbox`) for quick terminal access
 
 **How it works in practice:**
 
