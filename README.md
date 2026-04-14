@@ -1,20 +1,18 @@
 # Slipbox MCP Server
 
-Model Context Protocol server for managing a Zettelkasten knowledge system with automatic cluster detection.
+Give Claude an active role in managing your knowledge. Slipbox is an [MCP server](https://modelcontextprotocol.io/) that turns Claude into a Zettelkasten partner -- creating atomic notes, forming semantic links, detecting emergent clusters, and synthesizing insights from your existing knowledge.
 
-## Requirements
+Your ideas in, structured knowledge out. Claude handles the formatting, linking, and integration. The ideas stay yours.
 
-- Python 3.10+
-- macOS or Linux
+**Plain files, zero lock-in.** Notes are markdown with YAML frontmatter -- readable in Obsidian, Foam, Logseq, or any editor. The SQLite database is an index, not the source of truth. Delete it and rebuild from files anytime.
 
-## Features
+- **19 MCP tools** for notes, links, search, graph analysis, and cluster management
+- **6 workflow prompts** encoding the Zettelkasten method so you don't re-explain it every session
+- **BM25 full-text search** across titles and content via SQLite FTS5
+- **Cluster detection** finds emergent topic groups and scaffolds structure notes
+- **Seven typed links** (reference, extends, refines, contradicts, questions, supports, related)
 
-- **Atomic Notes**: Create, update, and link notes following Zettelkasten principles
-- **Semantic Links**: Seven link types (reference, extends, refines, contradicts, questions, supports, related)
-- **Full-Text Search**: BM25-ranked search across titles and content using SQLite FTS5
-- **Graph Analysis**: Find central notes, orphans, and similar notes
-- **Cluster Detection**: Identifies emergent knowledge clusters
-- **Structure Note Generation**: Create structure notes from detected clusters
+Python 3.10+ | macOS or Linux
 
 ## In Action
 
@@ -660,6 +658,18 @@ slipbox tags            # List all tags with usage counts
 Install: `pipx install --editable .` (adds `slipbox` to your PATH)
 
 ---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding standards, and how to submit changes.
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and future direction.
+
+## Sponsor
+
+If slipbox-mcp is useful to you, consider [sponsoring the project](https://github.com/sponsors/jamesfishwick).
 
 ## License
 
