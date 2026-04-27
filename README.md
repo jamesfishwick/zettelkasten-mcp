@@ -120,7 +120,7 @@ export SLIPBOX_NOTES_DIR="~/.local/share/mcp/slipbox/notes"
 
 # SQLite database path
 
-export SLIPBOX_DATABASE_PATH="~/.local/share/mcp/slipbox/data/zettelkasten.db"
+export SLIPBOX_DATABASE_PATH="~/.local/share/mcp/slipbox/data/db/zettelkasten.db"
 
 # Optional: Log level (DEBUG, INFO, WARNING, ERROR)
 
@@ -139,7 +139,7 @@ cp .env.example .env
 
 ```bash
 mkdir -p ~/.local/share/mcp/slipbox/notes
-mkdir -p ~/.local/share/mcp/slipbox/data
+mkdir -p ~/.local/share/mcp/slipbox/data/db
 ```
 
 The server creates these automatically, but explicit creation helps verify permissions.
@@ -163,7 +163,7 @@ The example below shows Claude Desktop. For other MCP clients, consult their doc
       "env": {
         "PYTHONPATH": "/absolute/path/to/slipbox-mcp/src",
         "SLIPBOX_NOTES_DIR": "/Users/yourname/.local/share/mcp/slipbox/notes",
-        "SLIPBOX_DATABASE_PATH": "/Users/yourname/.local/share/mcp/slipbox/data/zettelkasten.db",
+        "SLIPBOX_DATABASE_PATH": "/Users/yourname/.local/share/mcp/slipbox/data/db/zettelkasten.db",
         "SLIPBOX_LOG_LEVEL": "INFO"
       }
     }
