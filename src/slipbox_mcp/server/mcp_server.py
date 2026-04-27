@@ -3,6 +3,7 @@ import logging
 import uuid
 from datetime import datetime
 from mcp.server.fastmcp import FastMCP
+from pydantic import ValidationError
 from slipbox_mcp.config import config
 from slipbox_mcp.server.descriptions import PROMPT_ANALYZE_NOTE
 from slipbox_mcp.services.search_service import SearchService
@@ -58,7 +59,16 @@ class ZettelkastenMcpServer:
         """Format an error response for MCP tool callers."""
         error_id = str(uuid.uuid4())[:8]
 
-        if isinstance(error, ValueError):
+        # ValidationError must be checked before ValueError: in Pydantic v2 it
+        # subclasses ValueError, so a generic str(error) would surface the full
+        # multi-line dump and bury the validator's curated message.
+        if isinstance(error, ValidationError):
+            logger.error("Validation error [%s]: %s", error_id, error)
+            errors = error.errors()
+            if errors:
+                return f"Error: {errors[0]['msg']}"
+            return f"Error: {error}"
+        elif isinstance(error, ValueError):
             logger.error("Validation error [%s]: %s", error_id, error)
             return f"Error: {error}"
         elif isinstance(error, (IOError, OSError)):

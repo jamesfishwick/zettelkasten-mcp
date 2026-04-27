@@ -279,3 +279,43 @@ def test_create_link_between_notes_is_persisted(note_repository):
     linked = note_repository.find_linked_notes(source.id, "outgoing")
     assert len(linked) == 1, f"Expected 1 outgoing note, got {len(linked)}"
     assert linked[0].id == target.id, f"Expected linked note {target.id}, got {linked[0].id}"
+
+
+# ---------------------------------------------------------------------------
+# Schema-violating hydration: model_construct fallback for legacy data
+# ---------------------------------------------------------------------------
+
+def test_get_all_includes_refless_literature_via_model_construct_fallback(note_repository):
+    """Legacy literature notes with empty references in storage must remain
+    visible to queries. The new model_validator would reject them at strict
+    construction, so hydration paths fall back to model_construct and surface
+    the violation via the audit-references CLI rather than silently dropping
+    the row from query results.
+    """
+    import datetime
+    import json
+    from slipbox_mcp.models.db_models import DBNote
+
+    # Inject a refless literature row directly, bypassing the service layer
+    # (which would correctly refuse to write this state).
+    with note_repository.session_factory() as session:
+        bad = DBNote(
+            id="20260101T000000000000999",
+            title="Legacy literature, missing refs",
+            content="Body text from before the validator landed.",
+            note_type="literature",
+            references_json=json.dumps([]),
+            created_at=datetime.datetime(2025, 1, 1, 0, 0, 0),
+            updated_at=datetime.datetime(2025, 1, 1, 0, 0, 0),
+        )
+        session.add(bad)
+        session.commit()
+
+    notes = note_repository.get_all()
+    found = [n for n in notes if n.id == "20260101T000000000000999"]
+    assert len(found) == 1, (
+        f"Refless literature note must remain visible to get_all(); "
+        f"got {len(found)} matches out of {len(notes)} notes."
+    )
+    assert found[0].note_type == NoteType.LITERATURE
+    assert found[0].references == []

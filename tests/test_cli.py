@@ -19,25 +19,27 @@ def _run_cli(*args, env=None):
 
 def _write_note(notes_dir: Path, note_id: str, note_type: str,
                 refs: list[str] | None = None) -> Path:
-    """Write a minimal markdown note with the given frontmatter."""
-    refs_block = ""
+    """Write a minimal markdown note with the given frontmatter.
+
+    Built without textwrap.dedent because dedent's common-prefix logic
+    breaks when interpolated multi-line strings (refs block) lack the
+    template's indentation, producing malformed YAML for refs paths.
+    """
+    lines = [
+        "---",
+        f"id: {note_id}",
+        f"title: Test {note_id}",
+        f"type: {note_type}",
+        "created: '2026-01-01T00:00:00.000000'",
+        "updated: '2026-01-01T00:00:00.000000'",
+    ]
     if refs:
-        refs_block = "references:\n" + "\n".join(f"- {r}" for r in refs) + "\n"
-    body = textwrap.dedent(f"""\
-        ---
-        id: {note_id}
-        title: Test {note_id}
-        type: {note_type}
-        created: '2026-01-01T00:00:00.000000'
-        updated: '2026-01-01T00:00:00.000000'
-        {refs_block}---
-
-        # Test {note_id}
-
-        Some content.
-    """)
+        lines.append("references:")
+        for r in refs:
+            lines.append(f"- {r}")
+    lines.extend(["---", "", f"# Test {note_id}", "", "Some content.", ""])
     path = notes_dir / f"{note_id}.md"
-    path.write_text(body)
+    path.write_text("\n".join(lines))
     return path
 
 
@@ -170,6 +172,33 @@ def test_audit_references_fix_downgrade():
         # Note that already had refs is untouched.
         ok = (notes_dir / "20260101T000000000000006.md").read_text()
         assert "type: literature" in ok
+
+
+def test_audit_references_surfaces_malformed_yaml_on_stdout():
+    """Malformed frontmatter must NOT be silently classified as 'not literature'.
+    Audit reports unparseable files in stdout (not just stderr) and exits 1.
+    """
+    with tempfile.TemporaryDirectory() as base:
+        base_path = Path(base)
+        notes_dir = base_path / "data" / "notes"
+        notes_dir.mkdir(parents=True)
+        # Valid offender so the test exercises both branches
+        _write_note(notes_dir, "20260101T000000000000010", "literature")
+        # Malformed frontmatter: unterminated key value, will fail YAML parse
+        broken = notes_dir / "20260101T000000000000011.md"
+        broken.write_text("---\nid: 20260101T000000000000011\ntitle: \"unterminated\n---\n\nbody\n")
+
+        result = _run_cli("--base-dir", str(base_path), "audit-references")
+        # Unparseable file present → non-zero exit even without --fix
+        assert result.returncode == 1, result.stderr
+        assert "Could not audit 1 file(s)" in result.stdout, (
+            f"Unparseable file must be surfaced on stdout, not just stderr. "
+            f"stdout={result.stdout!r}"
+        )
+        assert "20260101T000000000000011.md" in result.stdout
+        assert "20260101T000000000000010" in result.stdout, (
+            "Valid offender should still be listed alongside unparseable files."
+        )
 
 
 def test_audit_references_fix_makes_subsequent_runs_clean():

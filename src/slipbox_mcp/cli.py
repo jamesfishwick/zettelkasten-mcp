@@ -11,6 +11,7 @@ import argparse
 import os
 import signal
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from pathlib import Path
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import frontmatter  # noqa: E402
+import yaml  # noqa: E402
 
 from slipbox_mcp.formatting import format_cluster_summary, format_note_compact  # noqa: E402
 from slipbox_mcp.services.zettel_service import ZettelService  # noqa: E402
@@ -157,20 +159,25 @@ def cmd_export(args):
         sys.exit(1)
 
 
-def _scan_literature_notes_missing_refs(notes_dir: Path) -> list[tuple[Path, dict]]:
-    """Return (path, metadata) for every literature note with no references.
+def _scan_literature_notes_missing_refs(
+    notes_dir: Path,
+) -> tuple[list[tuple[Path, dict]], list[tuple[Path, Exception]]]:
+    """Return (offenders, unparseable) for literature notes in notes_dir.
 
     Reads frontmatter directly without constructing Pydantic Note objects, so
     this scan is safe to run even when the literature/references validator
-    would reject the very notes we are trying to surface.
+    would reject the very notes we are trying to surface. Files that cannot
+    be parsed are returned separately so callers can surface them on the
+    primary output stream rather than dropping them silently.
     """
     offenders: list[tuple[Path, dict]] = []
+    unparseable: list[tuple[Path, Exception]] = []
     for file_path in sorted(notes_dir.glob("*.md")):
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 post = frontmatter.load(f)
-        except Exception as e:
-            print(f"Warning: could not parse {file_path.name}: {e}", file=sys.stderr)
+        except (OSError, yaml.YAMLError, UnicodeDecodeError) as e:
+            unparseable.append((file_path, e))
             continue
 
         if post.metadata.get("type") != "literature":
@@ -186,53 +193,107 @@ def _scan_literature_notes_missing_refs(notes_dir: Path) -> list[tuple[Path, dic
 
         if not has_refs:
             offenders.append((file_path, post.metadata))
-    return offenders
+    return offenders, unparseable
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write text to path via temp file + os.replace for atomicity.
+
+    Avoids leaving the target half-written on a crash mid-write.
+    """
+    tmp_dir = path.parent
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=tmp_dir
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp_name, path)
+    except Exception:
+        # Cleanup the temp file on any failure before replace succeeds.
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def cmd_audit_references(args):
     """Audit literature notes for missing references.
 
     Without --fix, lists offenders. With --fix downgrade, rewrites their
-    frontmatter type to 'permanent' and re-indexes the database.
+    frontmatter type to 'permanent' and re-indexes the database. Per-file
+    rewrite errors are collected and reported at the end; the index rebuild
+    runs whenever any file was successfully downgraded so disk and DB stay
+    in sync even on partial success.
     """
     try:
         from slipbox_mcp.config import config as _config
         notes_dir = _config.get_absolute_path(_config.notes_dir)
 
-        offenders = _scan_literature_notes_missing_refs(notes_dir)
+        offenders, unparseable = _scan_literature_notes_missing_refs(notes_dir)
 
-        if not offenders:
+        if not offenders and not unparseable:
             print("All literature notes have references.")
             return
 
-        print(f"Found {len(offenders)} literature note(s) without references:\n")
-        for path, metadata in offenders:
-            note_id = metadata.get("id", path.stem)
-            title = metadata.get("title", "(untitled)")
-            created = metadata.get("created", "?")
-            print(f"  {note_id}  {title}")
-            print(f"    Created: {created}")
-            print(f"    Path:    {path}")
-            print()
+        if offenders:
+            print(f"Found {len(offenders)} literature note(s) without references:\n")
+            for path, metadata in offenders:
+                note_id = metadata.get("id", path.stem)
+                title = metadata.get("title", "(untitled)")
+                created = metadata.get("created", "?")
+                print(f"  {note_id}  {title}")
+                print(f"    Created: {created}")
+                print(f"    Path:    {path}")
+                print()
+
+        if unparseable:
+            print(f"Could not audit {len(unparseable)} file(s) (manual review required):\n")
+            for path, err in unparseable:
+                print(f"  {path}")
+                print(f"    {type(err).__name__}: {err}")
+                print()
 
         if args.fix != "downgrade":
-            print("Run with --fix downgrade to convert these to 'permanent' notes.")
-            print("Or add references manually and re-run.")
+            if offenders:
+                print("Run with --fix downgrade to convert offenders to 'permanent' notes.")
+                print("Or add references manually and re-run.")
+            if unparseable:
+                # Unparseable files block clean enforcement; signal via exit code.
+                sys.exit(1)
             return
 
         print(f"Downgrading {len(offenders)} note(s) to type='permanent'...")
+        succeeded: list[Path] = []
+        failed: list[tuple[Path, Exception]] = []
         for path, _metadata in offenders:
-            with open(path, "r", encoding="utf-8") as f:
-                post = frontmatter.load(f)
-            post.metadata["type"] = "permanent"
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(frontmatter.dumps(post))
-            print(f"  downgraded {path.name}")
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    post = frontmatter.load(f)
+                post.metadata["type"] = "permanent"
+                _atomic_write_text(path, frontmatter.dumps(post))
+                succeeded.append(path)
+                print(f"  downgraded {path.name}")
+            except (OSError, yaml.YAMLError) as e:
+                failed.append((path, e))
+                print(f"  failed   {path.name}: {e}", file=sys.stderr)
 
-        print("\nRe-indexing database...")
-        repo = NoteRepository()
-        repo.rebuild_index()
-        print("Done.")
+        # Always rebuild the index when any file was successfully rewritten,
+        # so the SQLite DB never lags behind disk on partial-failure runs.
+        if succeeded:
+            print("\nRe-indexing database...")
+            repo = NoteRepository()
+            repo.rebuild_index()
+            print("Done.")
+
+        if failed or unparseable:
+            print(
+                f"\n{len(failed)} downgrade(s) failed, "
+                f"{len(unparseable)} file(s) unparseable.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

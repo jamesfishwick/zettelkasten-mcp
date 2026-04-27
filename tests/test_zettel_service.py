@@ -1,6 +1,7 @@
 """Tests for the ZettelService class."""
 import frontmatter as fm
 import pytest
+from pydantic import ValidationError
 from slipbox_mcp.models.schema import LinkType, NoteType
 
 
@@ -297,3 +298,72 @@ def test_export_note_round_trips(zettel_service):
     assert len(parsed.links) == 1, f"Expected 1 link after round-trip, got {len(parsed.links)}"
     assert parsed.links[0].target_id == target.id, f"Round-trip link target mismatch: {parsed.links[0].target_id!r}"
     assert parsed.links[0].description == "key link", f"Round-trip link description mismatch: {parsed.links[0].description!r}"
+
+
+# ---------------------------------------------------------------------------
+# Update path: literature/references constraint at the service boundary
+# ---------------------------------------------------------------------------
+
+def test_update_promotes_permanent_to_literature_with_refs_in_same_call(zettel_service):
+    """End-to-end promotion through the service layer must validate the merged
+    target state atomically; a permanent note becomes literature when both
+    note_type and references are supplied in the same call.
+    """
+    note = zettel_service.create_note(
+        title="Draft",
+        content="Body text.",
+        note_type=NoteType.PERMANENT,
+    )
+
+    updated = zettel_service.update_note(
+        note.id,
+        note_type=NoteType.LITERATURE,
+        references=["https://example.com/source"],
+    )
+
+    assert updated.note_type == NoteType.LITERATURE
+    assert updated.references == ["https://example.com/source"]
+
+
+def test_update_promote_to_literature_without_refs_fails_atomically(zettel_service):
+    """Promoting to literature without references must fail validation, AND
+    the persisted note must remain unchanged (no partial mutation).
+    """
+    note = zettel_service.create_note(
+        title="Original Title",
+        content="Original body.",
+        note_type=NoteType.PERMANENT,
+    )
+
+    with pytest.raises(ValidationError):
+        zettel_service.update_note(
+            note.id,
+            title="New Title",
+            note_type=NoteType.LITERATURE,
+        )
+
+    persisted = zettel_service.get_note(note.id)
+    assert persisted.title == "Original Title", (
+        "Mid-update validation failure must not leave the persisted note "
+        "with a partially-applied title change."
+    )
+    assert persisted.note_type == NoteType.PERMANENT
+
+
+def test_update_clear_refs_on_literature_fails_with_validator_message(zettel_service):
+    """Clearing references on an existing literature note must surface the
+    validator's message; the persisted note must remain unchanged.
+    """
+    note = zettel_service.create_note(
+        title="Has Source",
+        content="Body.",
+        note_type=NoteType.LITERATURE,
+        references=["https://example.com/source"],
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        zettel_service.update_note(note.id, references=[])
+
+    assert "Literature notes must include at least one reference" in str(exc.value)
+    persisted = zettel_service.get_note(note.id)
+    assert persisted.references == ["https://example.com/source"]

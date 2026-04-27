@@ -58,29 +58,38 @@ class ZettelService:
         references: Optional[List[str]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Note:
-        """Update an existing note."""
+        """Update an existing note.
+
+        Validates the merged target state atomically: builds a candidate dict
+        from current state plus changes, then runs Note's full validator chain
+        once. Avoids the partial-mutation hazard of per-attribute assignment
+        with validate_assignment=True, where mid-update validation failure
+        would leave the in-memory note partially modified.
+        """
         note = self.repository.get(note_id)
         if not note:
             raise ValueError(f"Note with ID {note_id} not found")
 
+        changes: Dict[str, Any] = {}
         if title is not None:
-            note.title = title
+            changes["title"] = title
         if content is not None:
-            note.content = content
-        if tags is not None:
-            note.tags = [Tag(name=tag) for tag in tags]
-        # Set references before note_type so a permanent->literature transition
-        # with new refs in the same update passes the model validator.
-        if references is not None:
-            note.references = references
+            changes["content"] = content
         if note_type is not None:
-            note.note_type = note_type
+            changes["note_type"] = note_type
+        if tags is not None:
+            changes["tags"] = [Tag(name=tag) for tag in tags]
+        if references is not None:
+            changes["references"] = references
         if metadata is not None:
-            note.metadata = metadata
+            changes["metadata"] = metadata
+        changes["updated_at"] = datetime.datetime.now()
 
-        note.updated_at = datetime.datetime.now()
+        merged = note.model_dump()
+        merged.update(changes)
+        validated = Note.model_validate(merged)
 
-        return self.repository.update(note)
+        return self.repository.update(validated)
 
     def delete_note(self, note_id: str) -> None:
         """Delete a note."""
