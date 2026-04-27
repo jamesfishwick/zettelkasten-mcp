@@ -67,12 +67,14 @@ class ZettelService:
             note.title = title
         if content is not None:
             note.content = content
-        if note_type is not None:
-            note.note_type = note_type
         if tags is not None:
             note.tags = [Tag(name=tag) for tag in tags]
+        # Set references before note_type so a permanent->literature transition
+        # with new refs in the same update passes the model validator.
         if references is not None:
             note.references = references
+        if note_type is not None:
+            note.note_type = note_type
         if metadata is not None:
             note.metadata = metadata
 

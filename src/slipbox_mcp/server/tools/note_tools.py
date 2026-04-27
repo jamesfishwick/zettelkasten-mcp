@@ -29,7 +29,10 @@ def register_note_tools(server) -> None:
 
         Note Types:
         - fleeting: Quick captures, unprocessed thoughts (process within 24-48 hours)
-        - literature: Ideas extracted from sources (always include citation in references)
+        - literature: Ideas extracted from sources. REQUIRES at least one entry
+          in references (citation or URL). If you don't yet have the citation,
+          use 'fleeting' as a staging type and promote to 'literature' once
+          the source is attached.
         - permanent: Refined ideas in your own words (the core of your Zettelkasten)
         - structure: Maps organizing 7-15 related notes on a topic
         - hub: Entry points into major knowledge domains
@@ -115,6 +118,10 @@ def register_note_tools(server) -> None:
         Only provided fields are updated; omitted fields remain unchanged.
         Pass empty string for tags to clear all tags.
         Pass empty string for references to clear all references.
+
+        Constraint: notes with note_type='literature' must have at least one
+        reference. If you are promoting a note to 'literature', pass the
+        citation in references in the same call.
 
         Args:
             note_id: The ID of the note to update

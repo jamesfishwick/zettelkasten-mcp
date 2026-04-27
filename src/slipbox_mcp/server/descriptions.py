@@ -17,7 +17,9 @@ link to related notes using slipbox_create_link.
 
 Note Types:
 - fleeting: Quick captures, unprocessed thoughts (process within 24-48 hours)
-- literature: Ideas extracted from sources (always include citation in references)
+- literature: Ideas extracted from sources. REQUIRES at least one entry in
+  references (citation or URL). If the citation is not yet available, use
+  'fleeting' and promote to 'literature' once the source is attached.
 - permanent: Refined ideas in your own words (the core of your Zettelkasten)
 - structure: Maps organizing 7-15 related notes on a topic
 - hub: Entry points into major knowledge domains
@@ -430,7 +432,7 @@ Provide the rewritten version in a code block for easy copying.
 
 **Note type:**
 - `fleeting` \u2014 raw capture, needs processing
-- `literature` \u2014 extracted from a source (requires citation)
+- `literature` \u2014 extracted from a source. REQUIRES at least one entry in `references`. Use `fleeting` if you don't have the citation yet.
 - `permanent` \u2014 refined idea in user's own words
 - `structure` \u2014 organizes 7-15 related notes on a topic
 - `hub` \u2014 entry point to a major knowledge domain

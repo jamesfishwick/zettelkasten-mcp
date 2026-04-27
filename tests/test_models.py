@@ -75,6 +75,59 @@ class TestNoteModel:
         note.remove_tag("nonexistent")
         assert len(note.tags) == 2, "Removing nonexistent tag should be a no-op"
 
+    def test_literature_note_requires_references(self):
+        """Literature notes must have at least one reference."""
+        with pytest.raises(ValidationError) as exc_info:
+            Note(
+                title="Quote from a book",
+                content="A passage I want to keep.",
+                note_type=NoteType.LITERATURE,
+            )
+        assert "Literature notes must include at least one reference" in str(exc_info.value)
+
+    def test_literature_note_with_references_passes(self):
+        """Literature notes with at least one reference are valid."""
+        note = Note(
+            title="Quote from a book",
+            content="A passage I want to keep.",
+            note_type=NoteType.LITERATURE,
+            references=["Ahrens, S. (2017). How to Take Smart Notes."],
+        )
+        assert note.note_type == NoteType.LITERATURE
+        assert note.references == ["Ahrens, S. (2017). How to Take Smart Notes."]
+
+    def test_non_literature_notes_do_not_require_references(self):
+        """Permanent, fleeting, structure, and hub notes have no reference requirement."""
+        for note_type in (NoteType.PERMANENT, NoteType.FLEETING,
+                          NoteType.STRUCTURE, NoteType.HUB):
+            note = Note(
+                title=f"A {note_type.value} note",
+                content="Some content.",
+                note_type=note_type,
+            )
+            assert note.references == []
+
+    def test_promoting_to_literature_without_references_raises(self):
+        """Reassigning note_type to LITERATURE on a refless note must fail."""
+        note = Note(
+            title="A draft",
+            content="Some content.",
+            note_type=NoteType.PERMANENT,
+        )
+        with pytest.raises(ValidationError):
+            note.note_type = NoteType.LITERATURE
+
+    def test_promoting_to_literature_after_setting_references_passes(self):
+        """When references are set first, promotion to LITERATURE is allowed."""
+        note = Note(
+            title="A draft",
+            content="Some content.",
+            note_type=NoteType.PERMANENT,
+        )
+        note.references = ["https://example.com/source"]
+        note.note_type = NoteType.LITERATURE
+        assert note.note_type == NoteType.LITERATURE
+
     def test_note_link_operations(self):
         """add_link and remove_link manage the links list correctly."""
         note = Note(

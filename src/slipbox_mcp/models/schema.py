@@ -2,7 +2,7 @@
 import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 import threading
 
 # Thread-safe counter for uniqueness
@@ -151,6 +151,17 @@ class Note(BaseModel):
         if not v.strip():
             raise ValueError("Title cannot be empty")
         return v
+
+    @model_validator(mode="after")
+    def _literature_requires_references(self) -> "Note":
+        if self.note_type == NoteType.LITERATURE and not self.references:
+            raise ValueError(
+                "Literature notes must include at least one reference (a citation "
+                "or URL pointing to the source). If the citation is not yet "
+                "available, use note_type='fleeting' as a staging type and "
+                "promote the note to 'literature' once the reference is attached."
+            )
+        return self
 
     def add_tag(self, tag: Union[str, Tag]) -> None:
         """Add a tag to the note."""

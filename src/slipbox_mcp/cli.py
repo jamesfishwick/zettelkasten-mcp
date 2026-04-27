@@ -17,6 +17,8 @@ from pathlib import Path
 # Handle broken pipe gracefully (e.g., when piping to head)
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
+import frontmatter  # noqa: E402
+
 from slipbox_mcp.formatting import format_cluster_summary, format_note_compact  # noqa: E402
 from slipbox_mcp.services.zettel_service import ZettelService  # noqa: E402
 from slipbox_mcp.services.cluster_service import ClusterService  # noqa: E402
@@ -155,6 +157,87 @@ def cmd_export(args):
         sys.exit(1)
 
 
+def _scan_literature_notes_missing_refs(notes_dir: Path) -> list[tuple[Path, dict]]:
+    """Return (path, metadata) for every literature note with no references.
+
+    Reads frontmatter directly without constructing Pydantic Note objects, so
+    this scan is safe to run even when the literature/references validator
+    would reject the very notes we are trying to surface.
+    """
+    offenders: list[tuple[Path, dict]] = []
+    for file_path in sorted(notes_dir.glob("*.md")):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                post = frontmatter.load(f)
+        except Exception as e:
+            print(f"Warning: could not parse {file_path.name}: {e}", file=sys.stderr)
+            continue
+
+        if post.metadata.get("type") != "literature":
+            continue
+
+        refs = post.metadata.get("references")
+        if isinstance(refs, list):
+            has_refs = any(str(r).strip() for r in refs)
+        elif isinstance(refs, str):
+            has_refs = bool(refs.strip())
+        else:
+            has_refs = False
+
+        if not has_refs:
+            offenders.append((file_path, post.metadata))
+    return offenders
+
+
+def cmd_audit_references(args):
+    """Audit literature notes for missing references.
+
+    Without --fix, lists offenders. With --fix downgrade, rewrites their
+    frontmatter type to 'permanent' and re-indexes the database.
+    """
+    try:
+        from slipbox_mcp.config import config as _config
+        notes_dir = _config.get_absolute_path(_config.notes_dir)
+
+        offenders = _scan_literature_notes_missing_refs(notes_dir)
+
+        if not offenders:
+            print("All literature notes have references.")
+            return
+
+        print(f"Found {len(offenders)} literature note(s) without references:\n")
+        for path, metadata in offenders:
+            note_id = metadata.get("id", path.stem)
+            title = metadata.get("title", "(untitled)")
+            created = metadata.get("created", "?")
+            print(f"  {note_id}  {title}")
+            print(f"    Created: {created}")
+            print(f"    Path:    {path}")
+            print()
+
+        if args.fix != "downgrade":
+            print("Run with --fix downgrade to convert these to 'permanent' notes.")
+            print("Or add references manually and re-run.")
+            return
+
+        print(f"Downgrading {len(offenders)} note(s) to type='permanent'...")
+        for path, _metadata in offenders:
+            with open(path, "r", encoding="utf-8") as f:
+                post = frontmatter.load(f)
+            post.metadata["type"] = "permanent"
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(frontmatter.dumps(post))
+            print(f"  downgraded {path.name}")
+
+        print("\nRe-indexing database...")
+        repo = NoteRepository()
+        repo.rebuild_index()
+        print("Done.")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def cmd_tags(args):
     """List all tags."""
     try:
@@ -211,6 +294,18 @@ def main():
     # tags
     subparsers.add_parser("tags", help="List all tags with counts")
 
+    # audit-references
+    p_audit = subparsers.add_parser(
+        "audit-references",
+        help="List literature notes missing references"
+    )
+    p_audit.add_argument(
+        "--fix",
+        choices=["downgrade"],
+        default=None,
+        help="Apply a fix: 'downgrade' converts offenders to type=permanent",
+    )
+
     args = parser.parse_args()
 
     from slipbox_mcp.config import config
@@ -231,6 +326,7 @@ def main():
         "rebuild": cmd_rebuild,
         "export": cmd_export,
         "tags": cmd_tags,
+        "audit-references": cmd_audit_references,
     }
 
     commands[args.command](args)
