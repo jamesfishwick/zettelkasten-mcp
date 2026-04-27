@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Union
 
 import frontmatter
+from pydantic import ValidationError
 from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -233,7 +234,7 @@ class NoteRepository(Repository[Note]):
         else:
             references = []
 
-        return Note(
+        kwargs = dict(
             id=note_id,
             title=title,
             content=post.content,
@@ -246,6 +247,20 @@ class NoteRepository(Repository[Note]):
             metadata={k: v for k, v in metadata.items()
                      if k not in ["id", "title", "type", "tags", "created", "updated", "references"]}
         )
+        try:
+            return Note(**kwargs)
+        except ValidationError as e:
+            # Existing on-disk note violates current schema (e.g. literature
+            # without references after the new validator landed). Hydrate via
+            # model_construct so the note remains visible to queries; surface
+            # the violation via the audit-references CLI.
+            logger.warning(
+                "Schema violation hydrating note %s from markdown "
+                "(run `slipbox audit-references`): %s",
+                note_id,
+                e.errors()[0].get("msg", str(e)),
+            )
+            return Note.model_construct(**kwargs)
 
     def _db_note_to_note(self, db_note: DBNote) -> Note:
         """Convert a DBNote (with eager-loaded relationships) to a domain Note.
@@ -265,7 +280,7 @@ class NoteRepository(Repository[Note]):
             )
             for lnk in db_note.outgoing_links
         ]
-        return Note(
+        kwargs = dict(
             id=db_note.id,
             title=db_note.title,
             content=db_note.content,
@@ -276,6 +291,20 @@ class NoteRepository(Repository[Note]):
             created_at=db_note.created_at,
             updated_at=db_note.updated_at,
         )
+        try:
+            return Note(**kwargs)
+        except ValidationError as e:
+            # DB row violates current schema (e.g. literature without
+            # references after the new validator landed). Hydrate via
+            # model_construct so the note remains visible to queries; surface
+            # the violation via the audit-references CLI.
+            logger.warning(
+                "Schema violation hydrating note %s from DB "
+                "(run `slipbox audit-references`): %s",
+                db_note.id,
+                e.errors()[0].get("msg", str(e)),
+            )
+            return Note.model_construct(**kwargs)
 
     def _convert_db_notes(self, db_notes: List[DBNote]) -> List[Note]:
         """Convert a list of DBNote objects to domain Notes, skipping conversion errors."""

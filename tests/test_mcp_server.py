@@ -322,6 +322,27 @@ class TestErrorHandling(MockServerBase):
         result = self.server.format_error_response(Exception("Something went wrong"))
         assert "Error: Something went wrong" in result, f"Expected 'Error: Something went wrong' in result, got {result!r}"
 
+    def test_validation_error_returns_curated_message(self):
+        """ValidationError should surface the validator's curated message,
+        not the multi-line Pydantic dump that would bury recovery guidance.
+        """
+        from slipbox_mcp.models.schema import Note, NoteType
+        from pydantic import ValidationError
+        try:
+            Note(title="x", content="y", note_type=NoteType.LITERATURE)
+        except ValidationError as e:
+            result = self.server.format_error_response(e)
+
+        assert "Literature notes must include at least one reference" in result, (
+            f"Expected curated validator message in result, got {result!r}"
+        )
+        assert "validation error for Note" not in result, (
+            f"Pydantic envelope leaked into agent-facing error: {result!r}"
+        )
+        assert "errors.pydantic.dev" not in result, (
+            f"Pydantic doc URL leaked into agent-facing error: {result!r}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Model-level reference tests  (no server needed)

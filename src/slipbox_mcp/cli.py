@@ -9,13 +9,18 @@ Philosophy: The CLI handles *what exists*. The agent handles *what should exist*
 """
 import argparse
 import os
+import re
 import signal
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
 # Handle broken pipe gracefully (e.g., when piping to head)
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+import frontmatter  # noqa: E402
+import yaml  # noqa: E402
 
 from slipbox_mcp.formatting import format_cluster_summary, format_note_compact  # noqa: E402
 from slipbox_mcp.services.zettel_service import ZettelService  # noqa: E402
@@ -155,6 +160,171 @@ def cmd_export(args):
         sys.exit(1)
 
 
+def _scan_literature_notes_missing_refs(
+    notes_dir: Path,
+) -> tuple[list[tuple[Path, dict]], list[tuple[Path, Exception]]]:
+    """Return (offenders, unparseable) for literature notes in notes_dir.
+
+    Reads frontmatter directly without constructing Pydantic Note objects, so
+    this scan is safe to run even when the literature/references validator
+    would reject the very notes we are trying to surface. Files that cannot
+    be parsed are returned separately so callers can surface them on the
+    primary output stream rather than dropping them silently.
+    """
+    offenders: list[tuple[Path, dict]] = []
+    unparseable: list[tuple[Path, Exception]] = []
+    for file_path in sorted(notes_dir.glob("*.md")):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                post = frontmatter.load(f)
+        except (OSError, yaml.YAMLError, UnicodeDecodeError) as e:
+            unparseable.append((file_path, e))
+            continue
+
+        if post.metadata.get("type") != "literature":
+            continue
+
+        refs = post.metadata.get("references")
+        if isinstance(refs, list):
+            has_refs = any(str(r).strip() for r in refs)
+        elif isinstance(refs, str):
+            has_refs = bool(refs.strip())
+        else:
+            has_refs = False
+
+        if not has_refs:
+            offenders.append((file_path, post.metadata))
+    return offenders, unparseable
+
+
+_TYPE_LITERATURE_RE = re.compile(
+    r"^type:\s*['\"]?literature['\"]?\s*$",
+    re.MULTILINE,
+)
+
+
+def _rewrite_type_to_permanent(content: str) -> str:
+    """Surgical replacement of `type: literature` with `type: permanent`.
+
+    Operates only inside the leading frontmatter block (between the first two
+    `---` markers) and replaces a single matching line. Avoids round-tripping
+    the whole document through frontmatter.dumps, which would re-serialize
+    other keys and produce noisy diffs in git-tracked slipboxes.
+    """
+    if not content.startswith("---\n"):
+        raise ValueError("Frontmatter block not found (no leading '---')")
+    end_marker = content.find("\n---", 4)
+    if end_marker == -1:
+        raise ValueError("Frontmatter block not terminated (no closing '---')")
+    block = content[4:end_marker]
+    new_block, n = _TYPE_LITERATURE_RE.subn("type: permanent", block, count=1)
+    if n == 0:
+        raise ValueError("No 'type: literature' line found in frontmatter")
+    return "---\n" + new_block + content[end_marker:]
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write text to path via temp file + os.replace for atomicity.
+
+    Avoids leaving the target half-written on a crash mid-write.
+    """
+    tmp_dir = path.parent
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=tmp_dir
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp_name, path)
+    except Exception:
+        # Cleanup the temp file on any failure before replace succeeds.
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+
+
+def cmd_audit_references(args):
+    """Audit literature notes for missing references.
+
+    Without --fix, lists offenders. With --fix downgrade, rewrites their
+    frontmatter type to 'permanent' and re-indexes the database. Per-file
+    rewrite errors are collected and reported at the end; the index rebuild
+    runs whenever any file was successfully downgraded so disk and DB stay
+    in sync even on partial success.
+    """
+    try:
+        from slipbox_mcp.config import config as _config
+        notes_dir = _config.get_absolute_path(_config.notes_dir)
+
+        offenders, unparseable = _scan_literature_notes_missing_refs(notes_dir)
+
+        if not offenders and not unparseable:
+            print("All literature notes have references.")
+            return
+
+        if offenders:
+            print(f"Found {len(offenders)} literature note(s) without references:\n")
+            for path, metadata in offenders:
+                note_id = metadata.get("id", path.stem)
+                title = metadata.get("title", "(untitled)")
+                created = metadata.get("created", "?")
+                print(f"  {note_id}  {title}")
+                print(f"    Created: {created}")
+                print(f"    Path:    {path}")
+                print()
+
+        if unparseable:
+            print(f"Could not audit {len(unparseable)} file(s) (manual review required):\n")
+            for path, err in unparseable:
+                print(f"  {path}")
+                print(f"    {type(err).__name__}: {err}")
+                print()
+
+        if args.fix != "downgrade":
+            if offenders:
+                print("Run with --fix downgrade to convert offenders to 'permanent' notes.")
+                print("Or add references manually and re-run.")
+            if unparseable:
+                # Unparseable files block clean enforcement; signal via exit code.
+                sys.exit(1)
+            return
+
+        print(f"Downgrading {len(offenders)} note(s) to type='permanent'...")
+        succeeded: list[Path] = []
+        failed: list[tuple[Path, Exception]] = []
+        for path, _metadata in offenders:
+            try:
+                content = path.read_text(encoding="utf-8")
+                rewritten = _rewrite_type_to_permanent(content)
+                _atomic_write_text(path, rewritten)
+                succeeded.append(path)
+                print(f"  downgraded {path.name}")
+            except (OSError, ValueError) as e:
+                failed.append((path, e))
+                print(f"  failed   {path.name}: {e}", file=sys.stderr)
+
+        # Always rebuild the index when any file was successfully rewritten,
+        # so the SQLite DB never lags behind disk on partial-failure runs.
+        if succeeded:
+            print("\nRe-indexing database...")
+            repo = NoteRepository()
+            repo.rebuild_index()
+            print("Done.")
+
+        if failed or unparseable:
+            print(
+                f"\n{len(failed)} downgrade(s) failed, "
+                f"{len(unparseable)} file(s) unparseable.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def cmd_tags(args):
     """List all tags."""
     try:
@@ -211,6 +381,18 @@ def main():
     # tags
     subparsers.add_parser("tags", help="List all tags with counts")
 
+    # audit-references
+    p_audit = subparsers.add_parser(
+        "audit-references",
+        help="List literature notes missing references"
+    )
+    p_audit.add_argument(
+        "--fix",
+        choices=["downgrade"],
+        default=None,
+        help="Apply a fix: 'downgrade' converts offenders to type=permanent",
+    )
+
     args = parser.parse_args()
 
     from slipbox_mcp.config import config
@@ -231,6 +413,7 @@ def main():
         "rebuild": cmd_rebuild,
         "export": cmd_export,
         "tags": cmd_tags,
+        "audit-references": cmd_audit_references,
     }
 
     commands[args.command](args)

@@ -1,8 +1,8 @@
 """Data models for the Zettelkasten MCP server."""
 import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
-from pydantic import BaseModel, Field, field_validator
+from typing import Annotated, Any, Dict, List, Optional, Set, Union
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 import threading
 
 # Thread-safe counter for uniqueness
@@ -122,7 +122,9 @@ class Note(BaseModel):
     note_type: NoteType = Field(default=NoteType.PERMANENT, description="Type of note")
     tags: List[Tag] = Field(default_factory=list, description="Tags for categorization")
     links: List[Link] = Field(default_factory=list, description="Links to other notes")
-    references: List[str] = Field(
+    references: List[
+        Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
+    ] = Field(
         default_factory=list,
         description="Bibliographic citations to external sources (books, articles, URLs)"
     )
@@ -151,6 +153,24 @@ class Note(BaseModel):
         if not v.strip():
             raise ValueError("Title cannot be empty")
         return v
+
+    @model_validator(mode="after")
+    def _literature_requires_references(self) -> "Note":
+        """Reject literature notes with empty references.
+
+        Fires on construction AND on note_type/references reassignment via
+        validate_assignment=True; that ordering coupling is what
+        zettel_service.update_note's atomic merged-state validation works
+        around so callers don't have to set fields in a particular order.
+        """
+        if self.note_type == NoteType.LITERATURE and not self.references:
+            raise ValueError(
+                "Literature notes must include at least one reference (a citation "
+                "or URL pointing to the source). If the citation is not yet "
+                "available, use note_type='fleeting' as a staging type and "
+                "promote the note to 'literature' once the reference is attached."
+            )
+        return self
 
     def add_tag(self, tag: Union[str, Tag]) -> None:
         """Add a tag to the note."""
